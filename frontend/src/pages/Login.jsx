@@ -52,12 +52,6 @@ export default function Login() {
         >
           {busy ? "Вход..." : "Войти"}
         </button>
-
-        <div className="login-demo">
-          Демо-доступ: <code>admin</code> / <code>admin123</code>
-          <br />
-          Пользователь РЭС: <code>res_adler</code> / <code>demo123</code>
-        </div>
       </form>
     </div>
   );
