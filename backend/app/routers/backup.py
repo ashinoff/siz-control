@@ -18,7 +18,7 @@ from ..database import Base, get_db
 from ..dependencies import require_admin
 from ..models.user import User
 
-router = APIRouter(prefix="/api/backup", tags=["backup"])
+router = APIRouter(prefix="/api", tags=["backup"])
 
 # Order matters: referenced tables must be restored before referencing ones.
 TABLE_ORDER = [
@@ -51,7 +51,7 @@ def _serialize(val: Any) -> Any:
     return val
 
 
-@router.get("/export")
+@router.get("/backup")
 def export_backup(
     db: Session = Depends(get_db),
     current: User = Depends(require_admin),
@@ -69,8 +69,8 @@ def export_backup(
 
     content = json.dumps(dump, ensure_ascii=False, indent=2).encode("utf-8")
 
-    now = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"siz_control_backup_{now}.json"
+    now = datetime.now().strftime("%Y-%m-%d")
+    filename = f"siz-control-backup-{now}.json"
 
     return StreamingResponse(
         io.BytesIO(content),
@@ -80,7 +80,7 @@ def export_backup(
 
 
 @router.post("/restore")
-def restore_backup(
+def restore_backup_endpoint(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current: User = Depends(require_admin),

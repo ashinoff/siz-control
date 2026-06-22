@@ -14,7 +14,7 @@ export default function Backup() {
     setBusy(true);
     setMsg(null);
     try {
-      const resp = await api.get("/api/backup/export", { responseType: "blob" });
+      const resp = await api.get("/api/backup", { responseType: "blob" });
       const disposition = resp.headers["content-disposition"] || "";
       const match = disposition.match(/filename="?([^"]+)"?/);
       const filename = match ? match[1] : "backup.json";
@@ -43,7 +43,7 @@ export default function Backup() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post("/api/backup/restore", fd, {
+      const { data } = await api.post("/api/restore", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMsg({ kind: "success", text: data.detail });
