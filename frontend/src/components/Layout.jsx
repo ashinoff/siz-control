@@ -29,7 +29,12 @@ export default function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [alerts, setAlerts] = useState(0);
+  const [alertCounts, setAlertCounts] = useState({
+    expiring_soon: 0,
+    expired: 0,
+    verification_expiring: 0,
+    verification_expired: 0,
+  });
   const [pwOpen, setPwOpen] = useState(false);
 
   useEffect(() => {
@@ -42,7 +47,13 @@ export default function Layout() {
     api
       .get("/api/dashboard")
       .then(({ data }) => {
-        if (active) setAlerts((data.expired || 0) + (data.verification_expired || 0));
+        if (active)
+          setAlertCounts({
+            expiring_soon: data.expiring_soon || 0,
+            expired: data.expired || 0,
+            verification_expiring: data.verification_expiring || 0,
+            verification_expired: data.verification_expired || 0,
+          });
       })
       .catch(() => {});
     return () => {
@@ -54,7 +65,7 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <Sidebar open={sidebarOpen} alerts={alerts} />
+      <Sidebar open={sidebarOpen} alertCounts={alertCounts} />
       <div className="main-area">
         <header className="topbar">
           <button
