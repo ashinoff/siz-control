@@ -36,6 +36,7 @@ class ReturnRequest(BaseModel):
 class MoveRequest(BaseModel):
     """Move an item between departments / warehouses."""
     inventory_item_id: int
+    quantity: Optional[int] = None
     to_department_id: int
     to_warehouse_id: int
     moved_date: date

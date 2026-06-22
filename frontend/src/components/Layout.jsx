@@ -24,6 +24,7 @@ const TITLES = {
   "/reports": "Отчеты",
   "/journal": "Журнал действий",
   "/catalog": "Справочники",
+  "/import": "Импорт из Excel",
   "/users": "Пользователи",
 };
 

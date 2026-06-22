@@ -19,6 +19,7 @@ import {
   IconGear,
   IconClipboard,
   IconChartBar,
+  IconUpload,
 } from "./icons.jsx";
 
 const SECTIONS = [
@@ -64,6 +65,7 @@ const SECTIONS = [
     label: "Администрирование",
     items: [
       { to: "/catalog", icon: IconBook, label: "Справочники", privileged: true },
+      { to: "/import", icon: IconUpload, label: "Импорт из Excel", admin: true },
       { to: "/users", icon: IconShieldUser, label: "Пользователи", admin: true },
     ],
   },

@@ -163,6 +163,13 @@ export const IconDownload = (p) => (
     <path d="M12 15V3" />
   </Svg>
 );
+export const IconUpload = (p) => (
+  <Svg {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M17 8l-5-5-5 5" />
+    <path d="M12 3v12" />
+  </Svg>
+);
 export const IconLogout = (p) => (
   <Svg {...p}>
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

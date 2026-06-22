@@ -12,6 +12,7 @@ export default function Move() {
   const [fromDept, setFromDept] = useState("");
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [moveQty, setMoveQty] = useState(1);
   const [toDept, setToDept] = useState("");
   const [toWarehouse, setToWarehouse] = useState("");
   const [movedDate, setMovedDate] = useState(today());
@@ -49,13 +50,15 @@ export default function Move() {
     try {
       await api.post("/api/operations/move", {
         inventory_item_id: selectedId,
+        quantity: moveQty,
         to_department_id: Number(toDept),
         to_warehouse_id: Number(toWarehouse),
         moved_date: movedDate,
         comment: comment || null,
       });
-      setMsg({ kind: "success", text: "Позиция перемещена." });
+      setMsg({ kind: "success", text: `Перемещено ${moveQty} шт.` });
       setSelectedId(null);
+      setMoveQty(1);
       setComment("");
       const params = { status: "in_stock" };
       if (fromDept) params.department_id = fromDept;
@@ -109,6 +112,7 @@ export default function Move() {
                     <th style={{ width: 36 }}></th>
                     <th>Наименование</th>
                     <th>Инв. №</th>
+                    <th>Кол-во</th>
                     <th>Подразделение</th>
                   </tr>
                 </thead>
@@ -117,7 +121,7 @@ export default function Move() {
                     <tr
                       key={it.id}
                       className="row-click"
-                      onClick={() => setSelectedId(it.id)}
+                      onClick={() => { setSelectedId(it.id); setMoveQty(it.quantity); }}
                       style={selectedId === it.id ? { background: "var(--accent-soft)" } : null}
                     >
                       <td onClick={(e) => e.stopPropagation()}>
@@ -125,7 +129,7 @@ export default function Move() {
                           type="radio"
                           name="moveitem"
                           checked={selectedId === it.id}
-                          onChange={() => setSelectedId(it.id)}
+                          onChange={() => { setSelectedId(it.id); setMoveQty(it.quantity); }}
                           style={{ accentColor: "var(--navy)" }}
                         />
                       </td>
@@ -138,6 +142,7 @@ export default function Move() {
                         </div>
                       </td>
                       <td className="num">{it.inventory_number || "—"}</td>
+                      <td className="num">{it.quantity}</td>
                       <td className="muted">{it.department_owner?.name || "—"}</td>
                     </tr>
                   ))}
@@ -175,6 +180,21 @@ export default function Move() {
               ))}
             </Select>
           </Field>
+          {selectedId && (() => {
+            const sel = items.find((i) => i.id === selectedId);
+            const max = sel ? sel.quantity : 1;
+            return (
+              <Field label={`Количество (макс. ${max})`} required>
+                <Input
+                  type="number"
+                  min={1}
+                  max={max}
+                  value={moveQty}
+                  onChange={(e) => setMoveQty(Math.max(1, Math.min(max, Number(e.target.value) || 1)))}
+                />
+              </Field>
+            );
+          })()}
           <Field label="Дата перемещения" required>
             <Input type="date" value={movedDate} onChange={(e) => setMovedDate(e.target.value)} />
           </Field>

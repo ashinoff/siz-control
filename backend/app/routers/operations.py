@@ -230,27 +230,65 @@ def move_item(
     if not warehouse or warehouse.department_id != payload.to_department_id:
         raise HTTPException(status_code=400, detail="Склад не принадлежит выбранному подразделению")
 
+    move_qty = payload.quantity if payload.quantity is not None else item.quantity
+    if move_qty > item.quantity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Запрошено {move_qty} шт., на складе только {item.quantity} шт.",
+        )
+
     from_department = item.department_owner_id
     from_warehouse = item.current_warehouse_id
 
-    item.department_owner_id = payload.to_department_id
-    item.current_warehouse_id = payload.to_warehouse_id
+    if move_qty < item.quantity:
+        # Partial move: reduce original, create new item at destination.
+        item.quantity -= move_qty
+        moved_item = InventoryItem(
+            catalog_item_id=item.catalog_item_id,
+            item_type=item.item_type,
+            inventory_number=item.inventory_number,
+            serial_number=item.serial_number,
+            quantity=move_qty,
+            department_owner_id=payload.to_department_id,
+            current_warehouse_id=payload.to_warehouse_id,
+            status=InventoryStatus.IN_STOCK.value,
+            date_received=item.date_received,
+            life_value=item.life_value,
+            life_unit=item.life_unit,
+            life_starts_in_stock=item.life_starts_in_stock,
+            requires_verification=item.requires_verification,
+            last_verification_date=item.last_verification_date,
+            next_verification_date=item.next_verification_date,
+            comment=item.comment,
+        )
+        if item.life_starts_in_stock and item.service_start_date:
+            moved_item.service_start_date = item.service_start_date
+            moved_item.service_end_date = item.service_end_date
+        db.add(moved_item)
+        db.flush()
+        target = moved_item
+    else:
+        # Full move.
+        item.department_owner_id = payload.to_department_id
+        item.current_warehouse_id = payload.to_warehouse_id
+        target = item
 
     log_movement(
         db,
         user_id=current.id,
         operation_type=OperationType.MOVE.value,
-        inventory_item_id=item.id,
+        inventory_item_id=target.id,
         department_id=payload.to_department_id,
         from_department_id=from_department,
         to_department_id=payload.to_department_id,
         from_warehouse_id=from_warehouse,
         to_warehouse_id=payload.to_warehouse_id,
-        object_label=item.catalog_item.name if item.catalog_item else None,
+        object_label=target.catalog_item.name if target.catalog_item else None,
+        old_value={"quantity": move_qty},
         comment=payload.comment,
     )
     db.commit()
-    return {"detail": "Позиция перемещена"}
+    return {"detail": f"Перемещено {move_qty} шт."}
 
 
 @router.post("/verify")
