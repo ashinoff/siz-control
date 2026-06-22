@@ -1,15 +1,17 @@
 """FastAPI application entrypoint.
 
-Wires together middleware and all routers. On startup it ensures the
-database schema exists. For local development with SQLite this means the
-app is fully runnable with zero configuration (``uvicorn app.main:app``).
-In production with PostgreSQL the same ``create_all`` is idempotent; Alembic
-migrations are also provided for controlled schema evolution.
+Wires together middleware and all routers. On startup it creates the
+database schema and seeds structural data (roles, departments, admin).
+In production the frontend build (dist/) is served as static files.
 """
 import logging
+import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 
 from .config import settings
 from .database import Base, engine
@@ -56,14 +58,23 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    """Create database tables if they do not exist yet."""
+    """Create database tables and seed structural data (roles, departments, admin)."""
     Base.metadata.create_all(bind=engine)
     logger.info("Database schema ensured (%s).", "sqlite" if settings.is_sqlite else "postgresql")
 
-
-@app.get("/", tags=["health"])
-def root() -> dict:
-    return {"service": "siz-control", "status": "ok", "docs": "/docs"}
+    # Seed roles, departments, warehouses and admin user (idempotent).
+    from .database import SessionLocal
+    from .seed import seed_structural
+    db = SessionLocal()
+    try:
+        seed_structural(db)
+        db.commit()
+        logger.info("Structural seed complete (roles, departments, admin).")
+    except Exception:
+        db.rollback()
+        logger.exception("Seed failed")
+    finally:
+        db.close()
 
 
 @app.get("/api/health", tags=["health"])
@@ -86,3 +97,22 @@ app.include_router(journal.router)
 app.include_router(export.router)
 app.include_router(norms.router)
 app.include_router(importdata.router)
+
+
+# Serve frontend static build -----------------------------------------------
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIR.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        """Serve index.html for any non-API route (SPA client-side routing)."""
+        file = FRONTEND_DIR / full_path
+        if file.is_file():
+            return FileResponse(str(file))
+        return FileResponse(str(FRONTEND_DIR / "index.html"))
+else:
+    @app.get("/", tags=["health"])
+    def root() -> dict:
+        return {"service": "siz-control", "status": "ok", "docs": "/docs"}
