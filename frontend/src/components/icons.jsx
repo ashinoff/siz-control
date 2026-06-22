@@ -200,6 +200,20 @@ export const IconMenu = (p) => (
     <path d="M3 12h18M3 6h18M3 18h18" />
   </Svg>
 );
+export const IconClipboard = (p) => (
+  <Svg {...p}>
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <rect x="8" y="2" width="8" height="4" rx="1" />
+    <path d="M9 14l2 2 4-4" />
+  </Svg>
+);
+export const IconChartBar = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="12" width="4" height="8" rx="1" />
+    <rect x="10" y="8" width="4" height="12" rx="1" />
+    <rect x="17" y="4" width="4" height="16" rx="1" />
+  </Svg>
+);
 export const IconGear = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="3" />

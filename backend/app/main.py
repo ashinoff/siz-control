@@ -25,6 +25,7 @@ from .routers import (
     export,
     inventory,
     journal,
+    norms,
     operations,
     reports,
     users,
@@ -80,3 +81,4 @@ app.include_router(reports.router)
 app.include_router(dashboard.router)
 app.include_router(journal.router)
 app.include_router(export.router)
+app.include_router(norms.router)

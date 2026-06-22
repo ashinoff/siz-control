@@ -18,6 +18,8 @@ import Reports from "./pages/Reports.jsx";
 import Journal from "./pages/Journal.jsx";
 import Catalog from "./pages/Catalog.jsx";
 import Users from "./pages/Users.jsx";
+import Norms from "./pages/Norms.jsx";
+import Compliance from "./pages/Compliance.jsx";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -74,6 +76,8 @@ export default function App() {
             </RoleGuard>
           }
         />
+        <Route path="/norms" element={<Norms />} />
+        <Route path="/compliance" element={<Compliance />} />
         <Route path="/deadlines" element={<DeadlineControl />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/journal" element={<Journal />} />

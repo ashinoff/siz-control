@@ -41,10 +41,12 @@ function Stat({ label, value, color, icon, onClick }) {
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [compliance, setCompliance] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     api.get("/api/dashboard").then(({ data }) => setStats(data));
+    api.get("/api/norms/compliance/summary").then(({ data }) => setCompliance(data)).catch(() => {});
   }, []);
 
   if (!stats) return <Spinner />;
@@ -192,6 +194,37 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {compliance && compliance.total_employees > 0 && (
+        <>
+          <div className="section-title">Укомплектованность по ТОН</div>
+          <div className="stat-grid">
+            <Stat
+              label="Средняя укомплектованность"
+              value={`${compliance.compliance_pct}%`}
+              color={compliance.compliance_pct >= 100 ? "#15803d" : compliance.compliance_pct >= 50 ? "#d97706" : "#dc2626"}
+              onClick={() => navigate("/compliance")}
+            />
+            <Stat
+              label="Полностью укомплектовано"
+              value={compliance.fully_equipped}
+              color="#15803d"
+            />
+            <Stat
+              label="Частично укомплектовано"
+              value={compliance.partially_equipped}
+              color="#d97706"
+              onClick={() => navigate("/compliance")}
+            />
+            <Stat
+              label="Не укомплектовано"
+              value={compliance.not_equipped}
+              color="#dc2626"
+              onClick={() => navigate("/compliance")}
+            />
+          </div>
+        </>
+      )}
 
       {stats.by_department?.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>

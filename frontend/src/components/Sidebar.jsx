@@ -17,6 +17,8 @@ import {
   IconShieldUser,
   IconList,
   IconGear,
+  IconClipboard,
+  IconChartBar,
 } from "./icons.jsx";
 
 const SECTIONS = [
@@ -41,6 +43,13 @@ const SECTIONS = [
       { to: "/return", icon: IconArrowIn, label: "Возврат" },
       { to: "/move", icon: IconMove, label: "Перемещение", privileged: true },
       { to: "/verify", icon: IconCheckShield, label: "Поверка", privileged: true },
+    ],
+  },
+  {
+    label: "ТОН",
+    items: [
+      { to: "/norms", icon: IconClipboard, label: "Нормы по должностям" },
+      { to: "/compliance", icon: IconChartBar, label: "Укомплектованность" },
     ],
   },
   {

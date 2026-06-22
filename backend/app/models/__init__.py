@@ -9,6 +9,7 @@ from .journal import (  # noqa: F401
     Movement,
     VerificationRecord,
 )
+from .norms import PositionNorm  # noqa: F401
 from .organization import Department, Employee, Warehouse  # noqa: F401
 from .user import Role, User  # noqa: F401
 
@@ -27,4 +28,5 @@ __all__ = [
     "VerificationRecord",
     "AuditLog",
     "FileAttachment",
+    "PositionNorm",
 ]
