@@ -234,7 +234,13 @@ function EmployeeModal({ emp, departments, onClose, onSaved }) {
           <Input value={form.personnel_number} onChange={(e) => set("personnel_number", e.target.value)} />
         </Field>
         <Field label="Должность">
-          <Input value={form.position} onChange={(e) => set("position", e.target.value)} />
+          <Select value={form.position} onChange={(e) => set("position", e.target.value)}>
+            <option value="">— выберите —</option>
+            <option value="Мастер">Мастер</option>
+            <option value="Электромонтер">Электромонтер</option>
+            <option value="Начальник">Начальник</option>
+            <option value="Инженер">Инженер</option>
+          </Select>
         </Field>
         <Field label="Подразделение" required>
           <Select value={form.department_id} onChange={(e) => set("department_id", e.target.value)}>
