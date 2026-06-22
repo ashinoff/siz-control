@@ -25,6 +25,21 @@ import {
 
 const TYPE_COLORS = { ppe: "#2563a8", equipment: "#0e9488", material: "#9333a8" };
 
+const SHORT_DEPT = {
+  "Адлерский РЭС": "Адл",
+  "Краснополянский РЭС": "КП",
+  "Сочинский РЭС": "Соч",
+  "Хостинский РЭС": "Хост",
+  "Дагомысский РЭС": "Даг",
+  "Туапсинский РЭС": "Туап",
+  "Лазаревский РЭС": "Лаз",
+  "Лаборатория": "Лаб",
+  "Служба учета": "СУ",
+};
+function shortDept(name) {
+  return SHORT_DEPT[name] || name.replace(/\s*РЭС$/i, "").slice(0, 4);
+}
+
 function Stat({ label, value, color, icon, onClick }) {
   return (
     <div className={`stat ${onClick ? "clickable" : ""}`} onClick={onClick}>
@@ -233,18 +248,27 @@ export default function Dashboard() {
                 <div className="card-header">
                   <h3>Укомплектованность по подразделениям</h3>
                 </div>
-                <div className="card-pad" style={{ height: 280 }}>
+                <div className="card-pad" style={{ height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={complianceDepts.map((d) => ({ name: d.department, pct: d.compliance_pct }))}
-                      margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+                      data={complianceDepts.map((d) => ({ name: shortDept(d.department), full: d.department, pct: d.compliance_pct }))}
+                      margin={{ top: 8, right: 8, left: -16, bottom: 40 }}
                     >
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5b6b82" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 12, fill: "#5b6b82" }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 10, fill: "#5b6b82" }}
+                        axisLine={false}
+                        tickLine={false}
+                        angle={-35}
+                        textAnchor="end"
+                        interval={0}
+                      />
+                      <YAxis tick={{ fontSize: 11, fill: "#5b6b82" }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
                       <Tooltip
                         cursor={{ fill: "rgba(37,99,168,0.06)" }}
                         contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
                         formatter={(v) => [`${v}%`, "Укомплект."]}
+                        labelFormatter={(_, payload) => payload?.[0]?.payload?.full || ""}
                       />
                       <Bar dataKey="pct" radius={[6, 6, 0, 0]} name="Укомплект.">
                         {complianceDepts.map((d, i) => (
