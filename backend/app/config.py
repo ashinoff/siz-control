@@ -9,10 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # Database. Defaults to a local SQLite file so the project runs with zero
-    # configuration for local testing. In production set DATABASE_URL to a
-    # PostgreSQL connection string (Supabase Free or Render Postgres).
-    DATABASE_URL: str = "sqlite:///./siz_control.db"
+    # Database — must be set via environment variable or .env file.
+    # Example: DATABASE_URL=postgresql://user:pass@host:5432/dbname
+    DATABASE_URL: str
 
     # Security
     SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_use_a_long_random_string"
@@ -25,7 +24,8 @@ class Settings(BaseSettings):
     ADMIN_FULL_NAME: str = "Администратор системы"
 
     # CORS — comma separated list of allowed origins for the frontend.
-    CORS_ORIGINS: str = "*"
+    # Example: CORS_ORIGINS=https://my-app.amvera.io,http://localhost:5173
+    CORS_ORIGINS: str
 
     # Where uploaded files are stored. Note: on Render the filesystem is
     # ephemeral, so for permanent storage use an external bucket (S3/Supabase).
