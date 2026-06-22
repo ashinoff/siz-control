@@ -3,7 +3,8 @@ import api, { apiError } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, SearchBox, Select, Modal, Field, Input, Textarea, Alert, ConfirmDialog } from "../components/ui.jsx";
 import { EMPLOYEE_STATUS_LABEL, EMPLOYEE_STATUS_BADGE } from "../lib/format.js";
-import { IconPlus, IconEdit, IconTrash, IconUsers } from "../components/icons.jsx";
+import { IconPlus, IconEdit, IconTrash, IconUsers, IconDownload } from "../components/icons.jsx";
+import exportExcel from "../lib/exportExcel.js";
 
 const emptyEmp = {
   full_name: "",
@@ -26,6 +27,7 @@ export default function Employees() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editEmp, setEditEmp] = useState(null);
   const [toDelete, setToDelete] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const canManage = isPrivileged;
 
@@ -75,11 +77,36 @@ export default function Employees() {
           <h1>Персонал</h1>
           <div className="subtitle">Сотрудников: {list.length}</div>
         </div>
-        {canManage && (
-          <button className="btn btn-primary" onClick={openCreate}>
-            <IconPlus size={17} /> Добавить сотрудника
+        <div className="btn-row">
+          <button
+            className="btn btn-secondary"
+            disabled={exporting || list.length === 0}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                const rows = list.map((e) => ({
+                  "ФИО": e.full_name,
+                  "Таб. №": e.personnel_number || "",
+                  "Должность": e.position || "",
+                  "Подразделение": e.department?.name || "",
+                  "Бригада": e.brigade || "",
+                  "Телефон": e.phone || "",
+                  "Статус": EMPLOYEE_STATUS_LABEL[e.status] || e.status,
+                }));
+                await exportExcel(rows, "Персонал", "employees");
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            <IconDownload size={16} /> Excel
           </button>
-        )}
+          {canManage && (
+            <button className="btn btn-primary" onClick={openCreate}>
+              <IconPlus size={17} /> Добавить сотрудника
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="toolbar">

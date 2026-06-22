@@ -3,7 +3,8 @@ import api from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, Select } from "../components/ui.jsx";
 import { OPERATION_LABEL, OPERATION_BADGE, fmtDateTime } from "../lib/format.js";
-import { IconList } from "../components/icons.jsx";
+import { IconList, IconDownload } from "../components/icons.jsx";
+import exportExcel from "../lib/exportExcel.js";
 
 export default function Journal() {
   const { isPrivileged } = useAuth();
@@ -12,6 +13,7 @@ export default function Journal() {
   const [loading, setLoading] = useState(true);
   const [opType, setOpType] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     api.get("/api/departments").then(({ data }) => setDepartments(data));
@@ -35,6 +37,27 @@ export default function Journal() {
           <h1>Журнал действий</h1>
           <div className="subtitle">Неизменяемая история операций с имуществом.</div>
         </div>
+        <button
+          className="btn btn-secondary"
+          disabled={exporting || moves.length === 0}
+          onClick={async () => {
+            setExporting(true);
+            try {
+              const rows = moves.map((m) => ({
+                "Дата и время": fmtDateTime(m.created_at),
+                "Операция": OPERATION_LABEL[m.operation_type] || m.operation_type,
+                "Объект": m.object_label || "",
+                "Пользователь": m.user?.full_name || "система",
+                "Комментарий": m.comment || "",
+              }));
+              await exportExcel(rows, "Журнал действий", "journal");
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          <IconDownload size={16} /> Excel
+        </button>
       </div>
 
       <div className="toolbar">

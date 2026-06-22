@@ -11,7 +11,8 @@ import {
   VERIF_BADGE,
   fmtDate,
 } from "../lib/format.js";
-import { IconWarehouse } from "../components/icons.jsx";
+import { IconWarehouse, IconDownload } from "../components/icons.jsx";
+import exportExcel from "../lib/exportExcel.js";
 
 export default function Warehouse() {
   const { isPrivileged } = useAuth();
@@ -22,6 +23,7 @@ export default function Warehouse() {
   const [typeF, setTypeF] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [detailId, setDetailId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     api.get("/api/departments").then(({ data }) => setDepartments(data));
@@ -55,6 +57,32 @@ export default function Warehouse() {
           <h1>Склад</h1>
           <div className="subtitle">Позиции на складах подразделений: {items.length}</div>
         </div>
+        <button
+          className="btn btn-secondary"
+          disabled={exporting || items.length === 0}
+          onClick={async () => {
+            setExporting(true);
+            try {
+              const rows = items.map((it) => ({
+                "Наименование": it.catalog_item?.name || "",
+                "Тип": ITEM_TYPE_LABEL[it.item_type] || it.item_type,
+                "Инв. номер": it.inventory_number || "",
+                "Серийный номер": it.serial_number || "",
+                "Кол-во": it.quantity,
+                "Склад": it.current_warehouse?.name || "",
+                "Подразделение": it.department_owner?.name || "",
+                "Поступление": it.date_received || "",
+                "Статус срока": DEADLINE_LABEL[it.deadline_status] || "",
+                "Статус поверки": VERIF_LABEL[it.verification_status] || "",
+              }));
+              await exportExcel(rows, "Склад", "warehouse");
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          <IconDownload size={16} /> Excel
+        </button>
       </div>
 
       <div className="toolbar">

@@ -14,7 +14,8 @@ import {
   VERIF_BADGE,
   fmtDate,
 } from "../lib/format.js";
-import { IconPlus, IconEdit, IconTrash, IconBox } from "../components/icons.jsx";
+import { IconPlus, IconEdit, IconTrash, IconBox, IconDownload } from "../components/icons.jsx";
+import exportExcel from "../lib/exportExcel.js";
 
 const CONFIG = {
   ppe: { title: "Средства индивидуальной защиты", types: ["ppe"], itemType: "ppe" },
@@ -41,6 +42,7 @@ export default function InventoryList({ scope }) {
   const [editItem, setEditItem] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [toDelete, setToDelete] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,31 @@ export default function InventoryList({ scope }) {
     }
   };
 
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const rows = items.map((it) => ({
+        "Наименование": it.catalog_item?.name || "",
+        "Тип": ITEM_TYPE_LABEL[it.item_type] || it.item_type,
+        "Инв. номер": it.inventory_number || "",
+        "Серийный номер": it.serial_number || "",
+        "Кол-во": it.quantity,
+        "Статус": INV_STATUS_LABEL[it.status] || it.status,
+        "Местонахождение": it.status === "issued"
+          ? (it.current_employee?.full_name || "")
+          : (it.current_warehouse?.name || ""),
+        "Подразделение": it.department_owner?.name || "",
+        "Окончание срока": it.service_end_date || "",
+        "Статус срока": DEADLINE_LABEL[it.deadline_status] || "",
+        "Поверка до": it.next_verification_date || "",
+        "Статус поверки": VERIF_LABEL[it.verification_status] || "",
+      }));
+      await exportExcel(rows, cfg.title, scope);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const openCreate = () => {
     setEditItem(null);
     setFormOpen(true);
@@ -97,11 +124,16 @@ export default function InventoryList({ scope }) {
           <h1>{cfg.title}</h1>
           <div className="subtitle">Единицы учёта: {items.length}</div>
         </div>
-        {isPrivileged && (
-          <button className="btn btn-primary" onClick={openCreate}>
-            <IconPlus size={17} /> Добавить позицию
+        <div className="btn-row">
+          <button className="btn btn-secondary" onClick={doExport} disabled={exporting || items.length === 0}>
+            <IconDownload size={16} /> Excel
           </button>
-        )}
+          {isPrivileged && (
+            <button className="btn btn-primary" onClick={openCreate}>
+              <IconPlus size={17} /> Добавить позицию
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="toolbar">

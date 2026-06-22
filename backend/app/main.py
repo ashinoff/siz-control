@@ -22,6 +22,7 @@ from .routers import (
     dashboard,
     departments,
     employees,
+    export,
     inventory,
     journal,
     operations,
@@ -78,3 +79,4 @@ app.include_router(operations.router)
 app.include_router(reports.router)
 app.include_router(dashboard.router)
 app.include_router(journal.router)
+app.include_router(export.router)
