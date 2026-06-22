@@ -7,10 +7,15 @@ from pydantic import BaseModel, Field
 from ..enums import ReturnCondition, VerificationResult
 
 
+class IssueItem(BaseModel):
+    inventory_item_id: int
+    quantity: int = Field(ge=1, default=1)
+
+
 class IssueRequest(BaseModel):
     """Issue one or more items from a warehouse to an employee."""
     employee_id: int
-    inventory_item_ids: List[int] = Field(min_length=1)
+    items: List[IssueItem] = Field(min_length=1)
     issued_date: date
     comment: Optional[str] = None
 

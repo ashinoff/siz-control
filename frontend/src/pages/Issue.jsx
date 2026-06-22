@@ -14,7 +14,7 @@ export default function Issue() {
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState("");
   const [items, setItems] = useState([]);
-  const [selected, setSelected] = useState(new Set());
+  const [selected, setSelected] = useState(new Map()); // Map<itemId, quantity>
   const [issuedDate, setIssuedDate] = useState(today());
   const [comment, setComment] = useState("");
   const [search, setSearch] = useState("");
@@ -37,7 +37,7 @@ export default function Issue() {
 
   useEffect(() => {
     setLoading(true);
-    setSelected(new Set());
+    setSelected(new Map());
     const params = { status: "in_stock" };
     if (departmentId) params.department_id = departmentId;
     if (search) params.search = search;
@@ -47,10 +47,18 @@ export default function Issue() {
       .finally(() => setLoading(false));
   }, [departmentId, search]);
 
-  const toggle = (id) => {
+  const toggle = (id, maxQty) => {
     setSelected((s) => {
-      const n = new Set(s);
-      n.has(id) ? n.delete(id) : n.add(id);
+      const n = new Map(s);
+      n.has(id) ? n.delete(id) : n.set(id, maxQty);
+      return n;
+    });
+  };
+
+  const setQty = (id, qty) => {
+    setSelected((s) => {
+      const n = new Map(s);
+      n.set(id, qty);
       return n;
     });
   };
@@ -59,14 +67,18 @@ export default function Issue() {
     setMsg(null);
     setBusy(true);
     try {
+      const issueItems = Array.from(selected.entries()).map(([id, qty]) => ({
+        inventory_item_id: id,
+        quantity: qty,
+      }));
       await api.post("/api/operations/issue", {
         employee_id: Number(employeeId),
-        inventory_item_ids: Array.from(selected),
+        items: issueItems,
         issued_date: issuedDate,
         comment: comment || null,
       });
       setMsg({ kind: "success", text: `Выдано позиций: ${selected.size}. Срок эксплуатации начат с ${issuedDate}.` });
-      setSelected(new Set());
+      setSelected(new Map());
       setComment("");
       const params = { status: "in_stock" };
       if (departmentId) params.department_id = departmentId;
@@ -161,6 +173,8 @@ export default function Issue() {
                   <th>Наименование</th>
                   <th>Тип</th>
                   <th>Инв. / Серийный №</th>
+                  <th>На складе</th>
+                  <th>Выдать</th>
                   <th>Склад</th>
                 </tr>
               </thead>
@@ -169,14 +183,14 @@ export default function Issue() {
                   <tr
                     key={it.id}
                     className="row-click"
-                    onClick={() => toggle(it.id)}
+                    onClick={() => toggle(it.id, it.quantity)}
                     style={selected.has(it.id) ? { background: "var(--accent-soft)" } : null}
                   >
                     <td onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selected.has(it.id)}
-                        onChange={() => toggle(it.id)}
+                        onChange={() => toggle(it.id, it.quantity)}
                         style={{ width: 16, height: 16, accentColor: "var(--navy)" }}
                       />
                     </td>
@@ -189,6 +203,22 @@ export default function Issue() {
                     <td className="num">
                       {it.inventory_number || "—"}
                       {it.serial_number && <div className="cell-sub">{it.serial_number}</div>}
+                    </td>
+                    <td className="num">{it.quantity}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {selected.has(it.id) && (
+                        <input
+                          type="number"
+                          min={1}
+                          max={it.quantity}
+                          value={selected.get(it.id)}
+                          onChange={(e) => {
+                            const v = Math.max(1, Math.min(it.quantity, Number(e.target.value) || 1));
+                            setQty(it.id, v);
+                          }}
+                          style={{ width: 60, textAlign: "center", padding: "2px 4px" }}
+                        />
+                      )}
                     </td>
                     <td className="muted">{it.current_warehouse?.name || "—"}</td>
                   </tr>

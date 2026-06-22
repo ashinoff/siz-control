@@ -58,27 +58,64 @@ def issue_items(
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
     issued: List[int] = []
-    for item_id in payload.inventory_item_ids:
-        item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+    for entry in payload.items:
+        item = db.query(InventoryItem).filter(InventoryItem.id == entry.inventory_item_id).first()
         if not item or not item.is_active:
-            raise HTTPException(status_code=404, detail=f"Позиция {item_id} не найдена")
+            raise HTTPException(status_code=404, detail=f"Позиция {entry.inventory_item_id} не найдена")
         if item.status == InventoryStatus.ISSUED.value:
-            raise HTTPException(status_code=400, detail=f"Позиция {item_id} уже выдана сотруднику")
+            raise HTTPException(status_code=400, detail=f"Позиция {entry.inventory_item_id} уже выдана сотруднику")
         if item.status == InventoryStatus.WRITTEN_OFF.value:
-            raise HTTPException(status_code=400, detail=f"Позиция {item_id} списана")
+            raise HTTPException(status_code=400, detail=f"Позиция {entry.inventory_item_id} списана")
+        if entry.quantity > item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Запрошено {entry.quantity} шт., на складе только {item.quantity} шт. (позиция {item.id})",
+            )
 
-        prev_status = item.status
-        item.status = InventoryStatus.ISSUED.value
-        item.current_employee_id = employee.id
-        item.date_issued = payload.issued_date
+        issue_qty = entry.quantity
 
-        # Service-life clock starts on first issue, if not already started.
-        if item.service_start_date is None:
-            item.service_start_date = payload.issued_date
-        status_service.recalc_service_dates(item)
+        if issue_qty < item.quantity:
+            # Split: reduce the stock item, create a new issued item.
+            item.quantity -= issue_qty
+
+            issued_item = InventoryItem(
+                catalog_item_id=item.catalog_item_id,
+                item_type=item.item_type,
+                inventory_number=item.inventory_number,
+                serial_number=item.serial_number,
+                quantity=issue_qty,
+                department_owner_id=item.department_owner_id,
+                current_warehouse_id=None,
+                current_employee_id=employee.id,
+                status=InventoryStatus.ISSUED.value,
+                date_received=item.date_received,
+                date_issued=payload.issued_date,
+                service_start_date=payload.issued_date,
+                life_value=item.life_value,
+                life_unit=item.life_unit,
+                life_starts_in_stock=item.life_starts_in_stock,
+                requires_verification=item.requires_verification,
+                last_verification_date=item.last_verification_date,
+                next_verification_date=item.next_verification_date,
+                comment=item.comment,
+            )
+            status_service.recalc_service_dates(issued_item)
+            db.add(issued_item)
+            db.flush()  # get issued_item.id
+            target = issued_item
+        else:
+            # Issue the entire item.
+            item.status = InventoryStatus.ISSUED.value
+            item.current_employee_id = employee.id
+            item.current_warehouse_id = None
+            item.date_issued = payload.issued_date
+            if item.service_start_date is None:
+                item.service_start_date = payload.issued_date
+            status_service.recalc_service_dates(item)
+            target = item
 
         assignment = Assignment(
-            inventory_item_id=item.id,
+            inventory_item_id=target.id,
             employee_id=employee.id,
             issued_date=payload.issued_date,
             issued_by_user_id=current.id,
@@ -90,16 +127,16 @@ def issue_items(
             db,
             user_id=current.id,
             operation_type=OperationType.ISSUE.value,
-            inventory_item_id=item.id,
-            department_id=item.department_owner_id,
+            inventory_item_id=target.id,
+            department_id=target.department_owner_id,
             employee_id=employee.id,
-            object_label=item.catalog_item.name if item.catalog_item else None,
-            old_value={"status": prev_status},
-            new_value={"status": item.status, "employee": employee.full_name,
-                       "service_start": str(item.service_start_date)},
+            object_label=target.catalog_item.name if target.catalog_item else None,
+            old_value={"status": InventoryStatus.IN_STOCK.value, "quantity": issue_qty},
+            new_value={"status": target.status, "employee": employee.full_name,
+                       "service_start": str(target.service_start_date)},
             comment=payload.comment,
         )
-        issued.append(item.id)
+        issued.append(target.id)
 
     db.commit()
     return {"detail": f"Выдано позиций: {len(issued)}", "items": issued}
