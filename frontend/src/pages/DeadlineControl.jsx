@@ -15,10 +15,10 @@ import {
 import { IconClock } from "../components/icons.jsx";
 
 const TABS = [
-  { key: "exp_expiring", label: "Истекает эксплуатация", filter: { deadline: "expiring" }, kind: "deadline" },
-  { key: "exp_expired", label: "Просрочено (эксплуатация)", filter: { deadline: "expired" }, kind: "deadline" },
-  { key: "ver_expiring", label: "Истекает поверка", filter: { verification: "expiring" }, kind: "verif" },
-  { key: "ver_expired", label: "Просрочена поверка", filter: { verification: "expired" }, kind: "verif" },
+  { key: "exp_expiring", label: "Истекает эксплуатация", filter: { deadline: "expiring" }, kind: "deadline", countKey: "expiring_soon" },
+  { key: "exp_expired", label: "Просрочено (эксплуатация)", filter: { deadline: "expired" }, kind: "deadline", countKey: "expired" },
+  { key: "ver_expiring", label: "Истекает поверка", filter: { verification: "expiring" }, kind: "verif", countKey: "verification_expiring" },
+  { key: "ver_expired", label: "Просрочена поверка", filter: { verification: "expired" }, kind: "verif", countKey: "verification_expired" },
 ];
 
 export default function DeadlineControl() {
@@ -32,10 +32,19 @@ export default function DeadlineControl() {
   const [departmentId, setDepartmentId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [detailId, setDetailId] = useState(null);
+  const [counts, setCounts] = useState({});
 
   useEffect(() => {
     api.get("/api/departments").then(({ data }) => setDepartments(data));
     api.get("/api/catalog/categories").then(({ data }) => setCategories(data));
+    api.get("/api/dashboard").then(({ data }) =>
+      setCounts({
+        expiring_soon: data.expiring_soon || 0,
+        expired: data.expired || 0,
+        verification_expiring: data.verification_expiring || 0,
+        verification_expired: data.verification_expired || 0,
+      })
+    );
   }, []);
 
   useEffect(() => {
@@ -62,11 +71,15 @@ export default function DeadlineControl() {
       </div>
 
       <div className="tabs">
-        {TABS.map((t) => (
-          <div key={t.key} className={`tab ${tab.key === t.key ? "active" : ""}`} onClick={() => setTab(t)}>
-            {t.label}
-          </div>
-        ))}
+        {TABS.map((t) => {
+          const cnt = counts[t.countKey] || 0;
+          return (
+            <div key={t.key} className={`tab ${tab.key === t.key ? "active" : ""}`} onClick={() => setTab(t)}>
+              {t.label}
+              {cnt > 0 && <span className="tab-badge">{cnt}</span>}
+            </div>
+          );
+        })}
       </div>
 
       <div className="toolbar">
