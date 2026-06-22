@@ -42,7 +42,7 @@ export default function Layout() {
     api
       .get("/api/dashboard")
       .then(({ data }) => {
-        if (active) setAlerts((data.expired || 0) + (data.verification_expired || 0));
+        if (active) setAlerts(data.alert_items || 0);
       })
       .catch(() => {});
     return () => {

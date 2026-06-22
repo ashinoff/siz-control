@@ -56,6 +56,7 @@ def dashboard(
         "expired": 0,
         "verification_expiring": 0,
         "verification_expired": 0,
+        "alert_items": 0,
         "to_writeoff": 0,
     }
     by_type: dict = defaultdict(int)
@@ -85,6 +86,12 @@ def dashboard(
             stats["verification_expiring"] += 1
         elif v_status == VerificationStatus.EXPIRED:
             stats["verification_expired"] += 1
+
+        # Count unique items that have at least one problem.
+        has_problem = d_status in (DeadlineStatus.EXPIRING, DeadlineStatus.EXPIRED) or \
+                      v_status in (VerificationStatus.EXPIRING, VerificationStatus.EXPIRED)
+        if has_problem:
+            stats["alert_items"] += 1
 
         # Per-department breakdown.
         dept_bucket = by_department_counts[item.department_owner_id]

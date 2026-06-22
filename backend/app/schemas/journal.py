@@ -77,6 +77,7 @@ class DashboardStats(BaseModel):
     expired: int
     verification_expiring: int
     verification_expired: int
+    alert_items: int
     to_writeoff: int
     by_type: Dict[str, int]
     by_department: List[Dict[str, object]]
