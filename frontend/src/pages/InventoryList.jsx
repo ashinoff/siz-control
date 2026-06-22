@@ -23,7 +23,7 @@ const CONFIG = {
 
 export default function InventoryList({ scope }) {
   const cfg = CONFIG[scope];
-  const { isPrivileged } = useAuth();
+  const { isPrivileged, isAdmin } = useAuth();
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -214,6 +214,7 @@ export default function InventoryList({ scope }) {
                           <button className="btn btn-icon btn-ghost" title="Изменить" onClick={() => openEdit(it)}>
                             <IconEdit size={16} />
                           </button>
+                          {isAdmin && it.status === "in_stock" && (
                           <button
                             className="btn btn-icon btn-ghost"
                             title="Удалить"
@@ -222,6 +223,7 @@ export default function InventoryList({ scope }) {
                           >
                             <IconTrash size={16} />
                           </button>
+                          )}
                         </div>
                       </td>
                     )}

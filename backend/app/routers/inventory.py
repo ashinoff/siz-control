@@ -10,6 +10,7 @@ from ..database import get_db
 from ..dependencies import (
     assert_department_access,
     get_current_user,
+    require_admin,
     require_privileged,
     scoped_department_id,
 )
@@ -222,11 +223,16 @@ def update_inventory_item(
 def delete_inventory_item(
     item_id: int,
     db: Session = Depends(get_db),
-    current: User = Depends(require_privileged),
+    current: User = Depends(require_admin),
 ):
     item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Позиция не найдена")
+    if item.status != InventoryStatus.IN_STOCK.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Удалить можно только позицию на складе. Сначала верните позицию со сотрудника на склад.",
+        )
     item.is_active = False  # soft delete
     log_movement(
         db,
