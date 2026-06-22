@@ -3,6 +3,9 @@
 Exports all table data as a single JSON file and can restore from it.
 Works identically on SQLite and PostgreSQL, making it safe for
 migrating between hosting providers (e.g. Render → Amvera).
+
+Table order is derived from SQLAlchemy metadata FK dependencies,
+so no manual ordering is needed and FK checks stay enabled.
 """
 import io
 import json
@@ -20,24 +23,14 @@ from ..models.user import User
 
 router = APIRouter(prefix="/api", tags=["backup"])
 
-# Order matters: referenced tables must be restored before referencing ones.
-TABLE_ORDER = [
-    "roles",
-    "departments",
-    "warehouses",
-    "employees",
-    "users",
-    "categories",
-    "subcategories",
-    "catalog_items",
-    "inventory_items",
-    "assignments",
-    "movements",
-    "verification_records",
-    "audit_logs",
-    "files",
-    "position_norms",
-]
+
+def _table_order() -> List[str]:
+    """Return table names sorted by FK dependencies (parents first).
+
+    Uses SQLAlchemy's ``Base.metadata.sorted_tables`` which performs a
+    topological sort based on foreign-key references.
+    """
+    return [t.name for t in Base.metadata.sorted_tables]
 
 
 def _serialize(val: Any) -> Any:
@@ -57,15 +50,18 @@ def export_backup(
     current: User = Depends(require_admin),
 ):
     """Download a full database dump as JSON."""
+    table_order = _table_order()
     inspector = inspect(db.bind)
     existing_tables = set(inspector.get_table_names())
 
     dump: Dict[str, List[dict]] = {}
-    for table_name in TABLE_ORDER:
+    for table_name in table_order:
         if table_name not in existing_tables:
             continue
         rows = db.execute(text(f"SELECT * FROM {table_name}")).mappings().all()
-        dump[table_name] = [{k: _serialize(v) for k, v in dict(row).items()} for row in rows]
+        dump[table_name] = [
+            {k: _serialize(v) for k, v in dict(row).items()} for row in rows
+        ]
 
     content = json.dumps(dump, ensure_ascii=False, indent=2).encode("utf-8")
 
@@ -85,7 +81,14 @@ def restore_backup_endpoint(
     db: Session = Depends(get_db),
     current: User = Depends(require_admin),
 ):
-    """Restore database from a JSON backup. REPLACES all existing data."""
+    """Restore database from a JSON backup.
+
+    REPLACES all existing data in a single transaction:
+    1. DELETE rows in REVERSE dependency order (children → parents).
+    2. INSERT rows in FORWARD dependency order (parents → children).
+    3. Reset PostgreSQL sequence counters to max(id) + 1.
+    Any error → full rollback, database unchanged.
+    """
     if not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="Допустимы только файлы .json")
 
@@ -98,36 +101,26 @@ def restore_backup_endpoint(
     if not isinstance(dump, dict):
         raise HTTPException(status_code=400, detail="Неверный формат бэкапа")
 
+    table_order = _table_order()
     inspector = inspect(db.bind)
     existing_tables = set(inspector.get_table_names())
-
-    # Validate that backup contains known tables.
-    unknown = set(dump.keys()) - set(TABLE_ORDER)
-    if unknown:
-        raise HTTPException(status_code=400, detail=f"Неизвестные таблицы в бэкапе: {', '.join(unknown)}")
+    is_pg = not str(db.bind.url).startswith("sqlite")
 
     try:
-        # Disable FK checks during restore.
-        is_sqlite = str(db.bind.url).startswith("sqlite")
-        if is_sqlite:
-            db.execute(text("PRAGMA foreign_keys = OFF"))
-        else:
-            db.execute(text("SET session_replication_role = 'replica'"))
-
-        # Clear tables in reverse order (children first).
-        for table_name in reversed(TABLE_ORDER):
+        # ── 1. DELETE in reverse order (children first) ──────────────
+        for table_name in reversed(table_order):
             if table_name in existing_tables:
                 db.execute(text(f"DELETE FROM {table_name}"))
 
-        # Insert data in correct order.
+        # ── 2. INSERT in forward order (parents first) ───────────────
         restored = {}
-        for table_name in TABLE_ORDER:
+        for table_name in table_order:
             rows = dump.get(table_name, [])
             if not rows or table_name not in existing_tables:
                 restored[table_name] = 0
                 continue
 
-            # Get column names from the actual table to filter out unknown columns.
+            # Filter to actual columns (ignore unknown keys in backup).
             table_columns = {c["name"] for c in inspector.get_columns(table_name)}
 
             for row in rows:
@@ -136,26 +129,26 @@ def restore_backup_endpoint(
                     continue
                 cols = ", ".join(filtered.keys())
                 placeholders = ", ".join(f":{k}" for k in filtered.keys())
-                db.execute(text(f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})"), filtered)
+                db.execute(
+                    text(f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders})"),
+                    filtered,
+                )
 
             restored[table_name] = len(rows)
 
-        # Re-enable FK checks.
-        if is_sqlite:
-            db.execute(text("PRAGMA foreign_keys = ON"))
-        else:
-            db.execute(text("SET session_replication_role = 'origin'"))
-            # Reset sequences for PostgreSQL.
-            for table_name in TABLE_ORDER:
-                if table_name in existing_tables and restored.get(table_name, 0) > 0:
+        # ── 3. Reset sequences (PostgreSQL only) ─────────────────────
+        if is_pg:
+            for table_name in table_order:
+                if restored.get(table_name, 0) > 0:
                     try:
                         db.execute(text(
                             f"SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), "
                             f"COALESCE((SELECT MAX(id) FROM {table_name}), 0) + 1, false)"
                         ))
                     except Exception:
-                        pass  # Table may not have serial id
+                        pass  # Table may not have a serial id column
 
+        # ── Single commit ────────────────────────────────────────────
         db.commit()
 
     except Exception as e:
