@@ -44,9 +44,12 @@ export default function Dashboard() {
   const [compliance, setCompliance] = useState(null);
   const navigate = useNavigate();
 
+  const [complianceDepts, setComplianceDepts] = useState([]);
+
   useEffect(() => {
     api.get("/api/dashboard").then(({ data }) => setStats(data));
     api.get("/api/norms/compliance/summary").then(({ data }) => setCompliance(data)).catch(() => {});
+    api.get("/api/norms/compliance/departments").then(({ data }) => setComplianceDepts(data)).catch(() => {});
   }, []);
 
   if (!stats) return <Spinner />;
@@ -223,6 +226,95 @@ export default function Dashboard() {
               onClick={() => navigate("/compliance")}
             />
           </div>
+
+          {complianceDepts.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
+              <div className="card">
+                <div className="card-header">
+                  <h3>Укомплектованность по подразделениям</h3>
+                </div>
+                <div className="card-pad" style={{ height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={complianceDepts.map((d) => ({ name: d.department, pct: d.compliance_pct }))}
+                      margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+                    >
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5b6b82" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#5b6b82" }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
+                      <Tooltip
+                        cursor={{ fill: "rgba(37,99,168,0.06)" }}
+                        contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
+                        formatter={(v) => [`${v}%`, "Укомплект."]}
+                      />
+                      <Bar dataKey="pct" radius={[6, 6, 0, 0]} name="Укомплект.">
+                        {complianceDepts.map((d, i) => (
+                          <Cell
+                            key={i}
+                            fill={d.compliance_pct >= 100 ? "#15803d" : d.compliance_pct >= 50 ? "#d97706" : "#dc2626"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <h3>Статус укомплектованности</h3>
+                </div>
+                <div className="card-pad" style={{ height: 280, display: "flex", alignItems: "center" }}>
+                  {(() => {
+                    const pieData = [
+                      { name: "Полностью", value: compliance.fully_equipped, color: "#15803d" },
+                      { name: "Частично", value: compliance.partially_equipped, color: "#d97706" },
+                      { name: "Не укомпл.", value: compliance.not_equipped, color: "#dc2626" },
+                    ].filter((d) => d.value > 0);
+                    return pieData.length ? (
+                      <>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={90}
+                              paddingAngle={2}
+                            >
+                              {pieData.map((d, i) => (
+                                <Cell key={i} fill={d.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div style={{ paddingLeft: 12, minWidth: 130 }}>
+                          {pieData.map((d) => (
+                            <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 13 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                              <span style={{ color: "var(--text-muted)" }}>{d.name}</span>
+                              <strong style={{ marginLeft: "auto" }}>{d.value}</strong>
+                            </div>
+                          ))}
+                          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4, fontSize: 13 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <span style={{ color: "var(--text-muted)" }}>Всего</span>
+                              <strong>{compliance.total_employees}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="empty" style={{ margin: "auto" }}>Нет данных</div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
