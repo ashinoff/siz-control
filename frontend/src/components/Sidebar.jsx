@@ -16,6 +16,7 @@ import {
   IconBook,
   IconShieldUser,
   IconList,
+  IconGear,
 } from "./icons.jsx";
 
 const SECTIONS = [
@@ -27,7 +28,8 @@ const SECTIONS = [
     label: "Учет",
     items: [
       { to: "/ppe", icon: IconShield, label: "СИЗ" },
-      { to: "/equipment", icon: IconBox, label: "Материалы и оборудование" },
+      { to: "/materials", icon: IconBox, label: "Материалы" },
+      { to: "/equipment", icon: IconGear, label: "Оборудование" },
       { to: "/warehouse", icon: IconWarehouse, label: "Склад" },
       { to: "/employees", icon: IconUsers, label: "Персонал" },
     ],

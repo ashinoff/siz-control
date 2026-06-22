@@ -10,7 +10,8 @@ import { Modal, Field, Input, Alert } from "./ui.jsx";
 const TITLES = {
   "/": "Главная",
   "/ppe": "Средства индивидуальной защиты",
-  "/equipment": "Материалы и оборудование",
+  "/materials": "Материалы",
+  "/equipment": "Оборудование",
   "/warehouse": "Склад",
   "/employees": "Персонал",
   "/issue": "Выдача",

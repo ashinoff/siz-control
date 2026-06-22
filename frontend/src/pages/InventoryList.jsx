@@ -18,7 +18,8 @@ import { IconPlus, IconEdit, IconTrash, IconBox } from "../components/icons.jsx"
 
 const CONFIG = {
   ppe: { title: "Средства индивидуальной защиты", types: ["ppe"], itemType: "ppe" },
-  equipment: { title: "Материалы и оборудование", types: ["material", "equipment"], itemType: null },
+  material: { title: "Материалы", types: ["material"], itemType: "material" },
+  equipment: { title: "Оборудование", types: ["equipment"], itemType: "equipment" },
 };
 
 export default function InventoryList({ scope }) {
