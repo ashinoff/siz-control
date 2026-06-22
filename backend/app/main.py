@@ -18,6 +18,7 @@ from .database import Base, engine
 from . import models  # noqa: F401
 from .routers import (
     auth,
+    backup,
     catalog,
     dashboard,
     departments,
@@ -72,6 +73,7 @@ def health() -> dict:
 
 # Register routers ----------------------------------------------------------
 app.include_router(auth.router)
+app.include_router(backup.router)
 app.include_router(users.router)
 app.include_router(departments.router)
 app.include_router(employees.router)

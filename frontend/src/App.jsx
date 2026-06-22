@@ -21,6 +21,7 @@ import Users from "./pages/Users.jsx";
 import Norms from "./pages/Norms.jsx";
 import Compliance from "./pages/Compliance.jsx";
 import Import from "./pages/Import.jsx";
+import Backup from "./pages/Backup.jsx";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -95,6 +96,14 @@ export default function App() {
           element={
             <RoleGuard allow={["admin"]}>
               <Import />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/backup"
+          element={
+            <RoleGuard allow={["admin"]}>
+              <Backup />
             </RoleGuard>
           }
         />

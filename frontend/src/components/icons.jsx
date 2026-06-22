@@ -221,6 +221,13 @@ export const IconChartBar = (p) => (
     <rect x="17" y="4" width="4" height="16" rx="1" />
   </Svg>
 );
+export const IconDatabase = (p) => (
+  <Svg {...p}>
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+  </Svg>
+);
 export const IconGear = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="3" />
