@@ -199,25 +199,29 @@ export default function Dashboard() {
             <h3>По подразделениям</h3>
           </div>
           <div className="table-wrap">
-            <table className="data">
+            <table className="data data-bordered">
               <thead>
                 <tr>
                   <th>Подразделение</th>
-                  <th className="text-right">Всего</th>
-                  <th className="text-right">На складе</th>
-                  <th className="text-right">Выдано</th>
-                  <th className="text-right">Просрочено</th>
+                  <th style={{ textAlign: "center" }}>Всего</th>
+                  <th style={{ textAlign: "center" }}>На складе</th>
+                  <th style={{ textAlign: "center" }}>Выдано</th>
+                  <th style={{ textAlign: "center" }}>Просрочено экспл.</th>
+                  <th style={{ textAlign: "center" }}>Просрочено поверка</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.by_department.map((d, i) => (
                   <tr key={i}>
                     <td className="cell-strong">{d.department}</td>
-                    <td className="text-right num">{d.total}</td>
-                    <td className="text-right num">{d.in_warehouse}</td>
-                    <td className="text-right num">{d.issued}</td>
-                    <td className="text-right num" style={{ color: d.expired ? "var(--red)" : "inherit", fontWeight: d.expired ? 600 : 400 }}>
+                    <td style={{ textAlign: "center" }}>{d.total}</td>
+                    <td style={{ textAlign: "center" }}>{d.in_warehouse}</td>
+                    <td style={{ textAlign: "center" }}>{d.issued}</td>
+                    <td style={{ textAlign: "center", color: d.expired ? "var(--red)" : "inherit", fontWeight: d.expired ? 600 : 400 }}>
                       {d.expired}
+                    </td>
+                    <td style={{ textAlign: "center", color: d.verification_expired ? "var(--red)" : "inherit", fontWeight: d.verification_expired ? 600 : 400 }}>
+                      {d.verification_expired}
                     </td>
                   </tr>
                 ))}

@@ -485,6 +485,10 @@ table.data tbody tr.row-click:hover {
 table.data .muted {
   color: var(--text-faint);
 }
+table.data-bordered thead th,
+table.data-bordered tbody td {
+  border: 1px solid var(--border);
+}
 .cell-strong {
   font-weight: 600;
   color: var(--text);

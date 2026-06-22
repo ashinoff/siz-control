@@ -96,6 +96,10 @@ def dashboard(
         # Per-department breakdown.
         dept_bucket = by_department_counts[item.department_owner_id]
         dept_bucket["total"] += 1
+        if item.status == InventoryStatus.IN_STOCK.value:
+            dept_bucket["in_warehouse"] = dept_bucket.get("in_warehouse", 0) + 1
+        elif item.status == InventoryStatus.ISSUED.value:
+            dept_bucket["issued"] = dept_bucket.get("issued", 0) + 1
         if d_status == DeadlineStatus.EXPIRED:
             dept_bucket["expired"] += 1
         if v_status == VerificationStatus.EXPIRED:
@@ -110,6 +114,8 @@ def dashboard(
             "department_id": dept_id,
             "department": dept_names.get(dept_id, str(dept_id)),
             "total": counts["total"],
+            "in_warehouse": counts.get("in_warehouse", 0),
+            "issued": counts.get("issued", 0),
             "expired": counts["expired"],
             "verification_expired": counts["verification_expired"],
         }
