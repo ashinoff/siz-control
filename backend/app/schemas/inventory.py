@@ -14,6 +14,7 @@ class InventoryItemBase(BaseModel):
     catalog_item_id: int
     inventory_number: Optional[str] = None
     serial_number: Optional[str] = None
+    brand_model: Optional[str] = None
     quantity: int = 1
     department_owner_id: int
     current_warehouse_id: Optional[int] = None
@@ -24,6 +25,9 @@ class InventoryItemBase(BaseModel):
     requires_verification: Optional[bool] = None
     last_verification_date: Optional[date] = None
     next_verification_date: Optional[date] = None
+    next_inspection_date: Optional[date] = None
+    last_inspection_result: Optional[str] = None
+    repair_info: Optional[str] = None
     comment: Optional[str] = None
 
 
@@ -34,6 +38,7 @@ class InventoryItemCreate(InventoryItemBase):
 class InventoryItemUpdate(BaseModel):
     inventory_number: Optional[str] = None
     serial_number: Optional[str] = None
+    brand_model: Optional[str] = None
     quantity: Optional[int] = None
     current_warehouse_id: Optional[int] = None
     date_received: Optional[date] = None
@@ -44,6 +49,9 @@ class InventoryItemUpdate(BaseModel):
     requires_verification: Optional[bool] = None
     last_verification_date: Optional[date] = None
     next_verification_date: Optional[date] = None
+    next_inspection_date: Optional[date] = None
+    last_inspection_result: Optional[str] = None
+    repair_info: Optional[str] = None
     comment: Optional[str] = None
 
 
@@ -54,6 +62,7 @@ class InventoryItemOut(ORMModel):
     item_type: str
     inventory_number: Optional[str] = None
     serial_number: Optional[str] = None
+    brand_model: Optional[str] = None
     quantity: int
 
     department_owner_id: int
@@ -75,6 +84,10 @@ class InventoryItemOut(ORMModel):
     requires_verification: bool
     last_verification_date: Optional[date] = None
     next_verification_date: Optional[date] = None
+
+    next_inspection_date: Optional[date] = None
+    last_inspection_result: Optional[str] = None
+    repair_info: Optional[str] = None
 
     comment: Optional[str] = None
     is_active: bool

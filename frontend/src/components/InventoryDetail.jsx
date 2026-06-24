@@ -75,6 +75,7 @@ export default function InventoryDetail({ itemId, open, onClose }) {
               <dd>{item.inventory_number || "—"}</dd>
               <dt>Серийный №</dt>
               <dd>{item.serial_number || "—"}</dd>
+              {item.brand_model && <><dt>Марка / тип</dt><dd>{item.brand_model}</dd></>}
               <dt>Количество</dt>
               <dd>{item.quantity}</dd>
               <dt>Категория</dt>
@@ -104,6 +105,9 @@ export default function InventoryDetail({ itemId, open, onClose }) {
               <dd>{fmtDate(item.last_verification_date)}</dd>
               <dt>Следующая поверка</dt>
               <dd>{fmtDate(item.next_verification_date)}</dd>
+              {item.next_inspection_date && <><dt>Следующий осмотр</dt><dd>{fmtDate(item.next_inspection_date)}</dd></>}
+              {item.last_inspection_result && <><dt>Результат осмотра</dt><dd>{{good:"Годен",failed:"Негоден",repair:"Требует ремонта"}[item.last_inspection_result] || item.last_inspection_result}</dd></>}
+              {item.repair_info && <><dt>Сведения о ремонтах</dt><dd>{item.repair_info}</dd></>}
               <dt>Комментарий</dt>
               <dd>{item.comment || "—"}</dd>
             </dl>

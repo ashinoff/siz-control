@@ -66,7 +66,8 @@ const SECTIONS = [
     label: "Администрирование",
     items: [
       { to: "/catalog", icon: IconBook, label: "Справочники", privileged: true },
-      { to: "/import", icon: IconUpload, label: "Импорт из Excel", admin: true },
+      { to: "/import", icon: IconUpload, label: "Импорт позиций", admin: true },
+      { to: "/import-issued", icon: IconUpload, label: "Импорт выданного", admin: true },
       { to: "/backup", icon: IconDatabase, label: "Бэкап базы", admin: true },
       { to: "/users", icon: IconShieldUser, label: "Пользователи", admin: true },
     ],

@@ -26,6 +26,7 @@ from .routers import (
     departments,
     employees,
     export,
+    import_issued,
     importdata,
     inventory,
     journal,
@@ -97,6 +98,7 @@ app.include_router(journal.router)
 app.include_router(export.router)
 app.include_router(norms.router)
 app.include_router(importdata.router)
+app.include_router(import_issued.router)
 
 
 # Serve frontend static build -----------------------------------------------

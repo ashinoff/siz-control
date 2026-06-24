@@ -7,6 +7,7 @@ const empty = {
   catalog_item_id: "",
   inventory_number: "",
   serial_number: "",
+  brand_model: "",
   quantity: 1,
   department_owner_id: "",
   current_warehouse_id: "",
@@ -17,6 +18,9 @@ const empty = {
   requires_verification: null,
   last_verification_date: "",
   next_verification_date: "",
+  next_inspection_date: "",
+  last_inspection_result: "",
+  repair_info: "",
   comment: "",
 };
 
@@ -52,6 +56,10 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
         comment: editItem.comment || "",
         inventory_number: editItem.inventory_number || "",
         serial_number: editItem.serial_number || "",
+        brand_model: editItem.brand_model || "",
+        next_inspection_date: editItem.next_inspection_date || "",
+        last_inspection_result: editItem.last_inspection_result || "",
+        repair_info: editItem.repair_info || "",
       });
     } else {
       setForm(empty);
@@ -82,6 +90,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
       const payload = {
         inventory_number: form.inventory_number || null,
         serial_number: form.serial_number || null,
+        brand_model: form.brand_model || null,
         quantity: Number(form.quantity) || 1,
         current_warehouse_id: form.current_warehouse_id ? Number(form.current_warehouse_id) : null,
         date_received: form.date_received || null,
@@ -91,6 +100,9 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
         requires_verification: form.requires_verification,
         last_verification_date: form.last_verification_date || null,
         next_verification_date: form.next_verification_date || null,
+        next_inspection_date: form.next_inspection_date || null,
+        last_inspection_result: form.last_inspection_result || null,
+        repair_info: form.repair_info || null,
         comment: form.comment || null,
       };
       if (isEdit) {
@@ -208,6 +220,9 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
         <Field label="Серийный номер">
           <Input value={form.serial_number} onChange={(e) => set("serial_number", e.target.value)} />
         </Field>
+        <Field label="Марка / тип">
+          <Input value={form.brand_model} onChange={(e) => set("brand_model", e.target.value)} placeholder="Модель или тип СИЗ" />
+        </Field>
 
         <Field label="Дата поступления">
           <Input type="date" value={form.date_received} onChange={(e) => set("date_received", e.target.value)} />
@@ -262,11 +277,25 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           />
         </Field>
 
-        <Field label="Комментарий">
-          <div className="full">
-            <Textarea value={form.comment} onChange={(e) => set("comment", e.target.value)} />
-          </div>
+        <Field label="Дата следующего осмотра">
+          <Input type="date" value={form.next_inspection_date} onChange={(e) => set("next_inspection_date", e.target.value)} />
         </Field>
+        <Field label="Результат предыдущего осмотра">
+          <Select value={form.last_inspection_result} onChange={(e) => set("last_inspection_result", e.target.value)}>
+            <option value="">— не указано —</option>
+            <option value="good">Годен</option>
+            <option value="failed">Негоден</option>
+            <option value="repair">Требует ремонта</option>
+          </Select>
+        </Field>
+        <div className="field full">
+          <label>Сведения о ремонтах</label>
+          <Textarea value={form.repair_info} onChange={(e) => set("repair_info", e.target.value)} placeholder="Информация о ремонтах, дефектах, восстановлении" />
+        </div>
+        <div className="field full">
+          <label>Комментарий</label>
+          <Textarea value={form.comment} onChange={(e) => set("comment", e.target.value)} />
+        </div>
       </div>
     </Modal>
   );

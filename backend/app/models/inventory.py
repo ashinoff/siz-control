@@ -25,6 +25,7 @@ class InventoryItem(Base, TimestampMixin, SoftDeleteMixin):
 
     inventory_number = Column(String(120), nullable=True, index=True)  # инвентарный
     serial_number = Column(String(120), nullable=True, index=True)     # серийный
+    brand_model = Column(String(255), nullable=True)                   # марка / тип
     quantity = Column(Integer, default=1, nullable=False)
 
     # Ownership and location
@@ -49,6 +50,13 @@ class InventoryItem(Base, TimestampMixin, SoftDeleteMixin):
     requires_verification = Column(Boolean, default=False, nullable=False)
     last_verification_date = Column(Date, nullable=True)
     next_verification_date = Column(Date, nullable=True)
+
+    # Inspection (осмотр — отдельно от поверки)
+    next_inspection_date = Column(Date, nullable=True)
+    last_inspection_result = Column(String(50), nullable=True)  # good, failed, repair
+
+    # Repair history
+    repair_info = Column(Text, nullable=True)
 
     comment = Column(Text, nullable=True)
 
