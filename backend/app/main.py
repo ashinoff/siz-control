@@ -23,6 +23,7 @@ from .routers import (
     backup,
     catalog,
     dashboard,
+    dbcheck,
     departments,
     employees,
     export,
@@ -99,6 +100,7 @@ app.include_router(export.router)
 app.include_router(norms.router)
 app.include_router(importdata.router)
 app.include_router(import_issued.router)
+app.include_router(dbcheck.router)
 
 
 # Serve frontend static build -----------------------------------------------

@@ -109,6 +109,7 @@ def upload_import(
     catalog_cache = {}
 
     created = 0
+    skipped = 0
     errors: List[str] = []
 
     for i, row in enumerate(rows, start=2):
@@ -207,6 +208,21 @@ def upload_import(
                 db.flush()
             catalog_cache[cache_key] = catalog_item
 
+        # Duplicate check: same catalog + inv_number + serial_number + department
+        dup_q = db.query(InventoryItem).filter(
+            InventoryItem.catalog_item_id == catalog_item.id,
+            InventoryItem.department_owner_id == dept_id,
+            InventoryItem.is_active.is_(True),
+        )
+        if inv_number:
+            dup_q = dup_q.filter(InventoryItem.inventory_number == inv_number)
+        if serial_number:
+            dup_q = dup_q.filter(InventoryItem.serial_number == serial_number)
+        if inv_number or serial_number:
+            if dup_q.first():
+                skipped += 1
+                continue
+
         # Create inventory item
         inv = InventoryItem(
             catalog_item_id=catalog_item.id,
@@ -243,7 +259,7 @@ def upload_import(
 
     db.commit()
 
-    result = {"detail": f"Импортировано: {created} позиций", "created": created}
+    result = {"detail": f"Импортировано: {created}, дубликатов пропущено: {skipped}", "created": created, "skipped": skipped}
     if errors:
         result["errors"] = errors
         result["detail"] += f", ошибок: {len(errors)}"

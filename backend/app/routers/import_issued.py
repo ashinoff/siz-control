@@ -147,6 +147,7 @@ def upload_issued_register(
         cat_by_name.setdefault(c.name.strip().lower(), []).append(c)
 
     created = 0
+    skipped = 0
     errors: List[dict] = []
 
     for i, row in enumerate(rows, start=2):
@@ -209,6 +210,21 @@ def upload_issued_register(
             errors.append({"row": i, "fio": fio, "item": item_name, "errors": row_errors})
             continue
 
+        # Duplicate check: same catalog + inv_number/serial + employee
+        dup_q = db.query(InventoryItem).filter(
+            InventoryItem.catalog_item_id == catalog_item.id,
+            InventoryItem.current_employee_id == employee.id,
+            InventoryItem.is_active.is_(True),
+        )
+        if inv_number:
+            dup_q = dup_q.filter(InventoryItem.inventory_number == inv_number)
+        if serial_number:
+            dup_q = dup_q.filter(InventoryItem.serial_number == serial_number)
+        if inv_number or serial_number:
+            if dup_q.first():
+                skipped += 1
+                continue
+
         # Find warehouse for the department
         wh = db.query(Warehouse).filter(
             Warehouse.department_id == dept.id, Warehouse.is_active.is_(True)
@@ -253,8 +269,9 @@ def upload_issued_register(
     db.commit()
 
     result = {
-        "detail": f"Импортировано: {created} позиций",
+        "detail": f"Импортировано: {created}, дубликатов пропущено: {skipped}",
         "created": created,
+        "skipped": skipped,
         "error_count": len(errors),
     }
     if errors:
