@@ -64,6 +64,15 @@ def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
     logger.info("Database schema ensured (%s).", "sqlite" if settings.is_sqlite else "postgresql")
 
+    # create_all only creates missing tables; it never adds columns to
+    # existing ones. Reconcile model columns against the real tables so a
+    # schema that predates a model change (the Amvera case) self-heals.
+    from .schema_sync import sync_schema
+    try:
+        sync_schema(engine)
+    except Exception:
+        logger.exception("Schema sync failed")
+
     # Seed roles, departments, warehouses and admin user (idempotent).
     from .database import SessionLocal
     from .seed import seed_structural
