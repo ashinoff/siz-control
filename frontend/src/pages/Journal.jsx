@@ -5,6 +5,7 @@ import { Badge, Spinner, EmptyState, Select } from "../components/ui.jsx";
 import { OPERATION_LABEL, OPERATION_BADGE, fmtDateTime } from "../lib/format.js";
 import { IconList, IconDownload } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Journal() {
   const { isPrivileged } = useAuth();
@@ -34,7 +35,7 @@ export default function Journal() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Журнал действий</h1>
+          <PageHeading>Журнал действий</PageHeading>
           <div className="subtitle">Неизменяемая история операций с имуществом.</div>
         </div>
         <button

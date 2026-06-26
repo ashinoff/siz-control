@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Alert, Spinner } from "../components/ui.jsx";
 import { IconDownload, IconPlus } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Import() {
   const [file, setFile] = useState(null);
@@ -46,7 +47,7 @@ export default function Import() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Импорт из Excel</h1>
+          <PageHeading>Импорт из Excel</PageHeading>
           <div className="subtitle">Массовая загрузка СИЗ, материалов и оборудования из файла .xlsx</div>
         </div>
       </div>

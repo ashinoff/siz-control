@@ -16,6 +16,7 @@ import {
 } from "../lib/format.js";
 import { IconPlus, IconEdit, IconTrash, IconBox, IconDownload } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import PageHeading from "../components/PageHeading.jsx";
 
 const CONFIG = {
   ppe: { title: "Средства индивидуальной защиты", types: ["ppe"], itemType: "ppe" },
@@ -121,7 +122,7 @@ export default function InventoryList({ scope }) {
     <div>
       <div className="page-header">
         <div>
-          <h1>{cfg.title}</h1>
+          <PageHeading>{cfg.title}</PageHeading>
           <div className="subtitle">Единицы учёта: {items.length}</div>
         </div>
         <div className="btn-row">

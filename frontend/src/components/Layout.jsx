@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import api, { apiError } from "../api/client.js";
 import { initials, ROLE_LABEL } from "../lib/format.js";
+import { routeMeta } from "../lib/menuMeta.js";
 import { IconLogout, IconMenu, IconKey } from "./icons.jsx";
 import { Modal, Field, Input, Alert } from "./ui.jsx";
 
@@ -38,6 +39,7 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [alerts, setAlerts] = useState(0);
   const [pwOpen, setPwOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -58,6 +60,7 @@ export default function Layout() {
   }, [location.pathname]);
 
   const title = TITLES[location.pathname] || "СИЗ Контроль";
+  const meta = routeMeta(location.pathname);
 
   return (
     <div className="app-shell">
@@ -71,7 +74,21 @@ export default function Layout() {
             <IconMenu size={20} />
           </button>
           <div className="page-title">{title}</div>
-          <div className="spacer" />
+          {meta?.blurb ? (
+            <div
+              className="marquee"
+              title="Нажмите для инструкции к разделу"
+              onClick={() => setHelpOpen(true)}
+            >
+              <span className="marquee-track">
+                <span className="marquee-hint">ℹ️ {title}: </span>
+                {meta.blurb}
+                <span className="marquee-hint"> — нажмите для инструкции</span>
+              </span>
+            </div>
+          ) : (
+            <div className="spacer" />
+          )}
           <div style={{ position: "relative" }}>
             <div className="user-chip" onClick={() => setMenuOpen((o) => !o)}>
               <div className="avatar">{initials(user?.full_name)}</div>
@@ -121,7 +138,40 @@ export default function Layout() {
         </main>
       </div>
       <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
+      <HelpModal open={helpOpen} title={title} meta={meta} onClose={() => setHelpOpen(false)} />
     </div>
+  );
+}
+
+function HelpModal({ open, title, meta, onClose }) {
+  if (!open || !meta?.help) return null;
+  const { what, how, why } = meta.help;
+  return (
+    <Modal
+      open={open}
+      title={`Инструкция · ${title}`}
+      onClose={onClose}
+      footer={
+        <button className="btn btn-primary" onClick={onClose}>
+          Понятно
+        </button>
+      }
+    >
+      <div className="help-block">
+        <div className="help-row">
+          <span className="help-tag">Что это</span>
+          <span>{what}</span>
+        </div>
+        <div className="help-row">
+          <span className="help-tag">Как</span>
+          <span>{how}</span>
+        </div>
+        <div className="help-row">
+          <span className="help-tag">Зачем</span>
+          <span>{why}</span>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

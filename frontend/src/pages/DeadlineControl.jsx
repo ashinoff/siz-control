@@ -13,6 +13,7 @@ import {
   daysLeft,
 } from "../lib/format.js";
 import { IconClock } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const TABS = [
   { key: "exp_expiring", label: "Истекает эксплуатация", filter: { deadline: "expiring" }, kind: "deadline", countKey: "expiring_soon" },
@@ -65,7 +66,7 @@ export default function DeadlineControl() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Контроль сроков</h1>
+          <PageHeading>Контроль сроков</PageHeading>
           <div className="subtitle">Позиции с истекающими и просроченными сроками эксплуатации и поверки.</div>
         </div>
       </div>

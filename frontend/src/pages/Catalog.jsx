@@ -3,6 +3,7 @@ import api, { apiError } from "../api/client.js";
 import { Badge, Spinner, EmptyState, Modal, Field, Input, Textarea, Select, Alert, ConfirmDialog } from "../components/ui.jsx";
 import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS, MEASURE_UNIT_OPTIONS, GENDER_OPTIONS, fmtLife } from "../lib/format.js";
 import { IconPlus, IconEdit, IconTrash, IconBook } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const TYPE_TABS = [
   { key: "ppe", label: "СИЗ" },
@@ -18,7 +19,7 @@ export default function Catalog() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Справочники</h1>
+          <PageHeading>Справочники</PageHeading>
           <div className="subtitle">Категории, подкатегории и номенклатура СИЗ, материалов и оборудования.</div>
         </div>
       </div>

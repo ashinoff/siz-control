@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, Select } from "../components/ui.jsx";
 import { IconUsers, IconDownload } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import PageHeading from "../components/PageHeading.jsx";
 
 function pctBadge(pct) {
   if (pct >= 100) return "badge-green";
@@ -78,7 +79,7 @@ export default function Compliance() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Укомплектованность</h1>
+          <PageHeading>Укомплектованность</PageHeading>
           <div className="subtitle">Контроль обеспеченности персонала по нормам ТОН</div>
         </div>
         <button className="btn btn-secondary" onClick={doExport} disabled={exporting}>

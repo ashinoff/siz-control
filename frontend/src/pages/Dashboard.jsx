@@ -22,6 +22,7 @@ import {
   IconCheckShield,
   IconAlert,
 } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const TYPE_COLORS = { ppe: "#2563a8", equipment: "#0e9488", material: "#9333a8" };
 
@@ -85,7 +86,7 @@ export default function Dashboard() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Обзор</h1>
+          <PageHeading>Обзор</PageHeading>
           <div className="subtitle">Сводная информация по учету и срокам</div>
         </div>
       </div>

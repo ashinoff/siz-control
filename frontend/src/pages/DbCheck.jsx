@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Alert, Badge, Spinner, EmptyState } from "../components/ui.jsx";
 import { IconCheckShield, IconAlert } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function DbCheck() {
   const [result, setResult] = useState(null);
@@ -43,7 +44,7 @@ export default function DbCheck() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Проверка базы данных</h1>
+          <PageHeading>Проверка базы данных</PageHeading>
           <div className="subtitle">Поиск и исправление ошибок целостности данных</div>
         </div>
         <button className="btn btn-primary" onClick={runCheck} disabled={loading}>

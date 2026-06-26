@@ -13,6 +13,7 @@ import {
 } from "../lib/format.js";
 import { IconWarehouse, IconDownload } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Warehouse() {
   const { isPrivileged } = useAuth();
@@ -54,7 +55,7 @@ export default function Warehouse() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Склад</h1>
+          <PageHeading>Склад</PageHeading>
           <div className="subtitle">Позиции на складах подразделений: {items.length}</div>
         </div>
         <button

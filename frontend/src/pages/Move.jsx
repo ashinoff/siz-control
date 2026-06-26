@@ -3,6 +3,7 @@ import api, { apiError } from "../api/client.js";
 import { Badge, Spinner, EmptyState, Field, Input, Select, Textarea, Alert, SearchBox } from "../components/ui.jsx";
 import { ITEM_TYPE_LABEL } from "../lib/format.js";
 import { IconMove, IconBox } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -77,7 +78,7 @@ export default function Move() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Перемещение между подразделениями</h1>
+          <PageHeading>Перемещение между подразделениями</PageHeading>
           <div className="subtitle">Доступно Лаборатории, Службе учёта и Администратору.</div>
         </div>
       </div>

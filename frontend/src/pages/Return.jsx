@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, Field, Input, Select, Textarea, Alert } from "../components/ui.jsx";
 import { ITEM_TYPE_LABEL, RETURN_CONDITION_OPTIONS } from "../lib/format.js";
 import { IconArrowIn, IconUser } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -86,7 +87,7 @@ export default function Return() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Возврат имущества</h1>
+          <PageHeading>Возврат имущества</PageHeading>
           <div className="subtitle">Приём позиций от сотрудника на склад. История эксплуатации сохраняется.</div>
         </div>
       </div>

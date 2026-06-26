@@ -3,6 +3,7 @@ import api, { apiError } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Spinner, EmptyState, Select, SearchBox, Badge, Field, Input } from "../components/ui.jsx";
 import { IconPlus, IconTrash, IconShield, IconX } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Norms() {
   const { isPrivileged } = useAuth();
@@ -130,7 +131,7 @@ export default function Norms() {
     <div>
       <div className="page-header">
         <div>
-          <h1>ТОН — Типовые отраслевые нормы</h1>
+          <PageHeading>ТОН — Типовые отраслевые нормы</PageHeading>
           <div className="subtitle">Обязательные СИЗ и СИ для каждой должности</div>
         </div>
       </div>

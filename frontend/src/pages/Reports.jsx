@@ -3,6 +3,7 @@ import api from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Spinner, EmptyState, Select, Field } from "../components/ui.jsx";
 import { IconReport, IconDownload } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Reports() {
   const { isPrivileged } = useAuth();
@@ -68,7 +69,7 @@ export default function Reports() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Отчёты и выгрузки</h1>
+          <PageHeading>Отчёты и выгрузки</PageHeading>
           <div className="subtitle">Формирование отчётов с выгрузкой в Excel и CSV.</div>
         </div>
       </div>

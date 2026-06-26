@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Alert, Spinner, ConfirmDialog } from "../components/ui.jsx";
 import { IconDownload, IconUpload } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Backup() {
   const [busy, setBusy] = useState(false);
@@ -60,7 +61,7 @@ export default function Backup() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Резервное копирование</h1>
+          <PageHeading>Резервное копирование</PageHeading>
           <div className="subtitle">Создание и восстановление резервной копии базы данных</div>
         </div>
       </div>

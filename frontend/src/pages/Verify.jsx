@@ -9,6 +9,7 @@ import {
   fmtDate,
 } from "../lib/format.js";
 import { IconCheckShield } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -47,7 +48,7 @@ export default function Verify() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Поверка</h1>
+          <PageHeading>Поверка</PageHeading>
           <div className="subtitle">Регистрация поверки и продление срока. Доступно Лаборатории, Службе учёта и Администратору.</div>
         </div>
       </div>
@@ -111,7 +112,7 @@ export default function Verify() {
                     </td>
                     <td>
                       <button className="btn btn-secondary btn-sm" onClick={() => setSelected(it)}>
-                        <IconCheckShield size={15} /> Поверка
+                        <IconCheckShield className="ico-neon-blue" size={15} /> Поверка
                       </button>
                     </td>
                   </tr>

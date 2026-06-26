@@ -12,6 +12,7 @@ import {
 } from "../lib/format.js";
 import { IconPlus, IconEdit, IconTrash, IconUsers, IconDownload, IconClipboard } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import PageHeading from "../components/PageHeading.jsx";
 
 const emptyEmp = {
   full_name: "",
@@ -82,7 +83,7 @@ export default function Employees() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Персонал</h1>
+          <PageHeading>Персонал</PageHeading>
           <div className="subtitle">Сотрудников: {list.length}</div>
         </div>
         <div className="btn-row">

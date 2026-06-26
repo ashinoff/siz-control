@@ -3,6 +3,7 @@ import api, { apiError } from "../api/client.js";
 import { Alert, Spinner } from "../components/ui.jsx";
 import { IconDownload, IconPlus } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function ImportIssued() {
   const [file, setFile] = useState(null);
@@ -57,7 +58,7 @@ export default function ImportIssued() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Импорт реестра выданного</h1>
+          <PageHeading>Импорт реестра выданного</PageHeading>
           <div className="subtitle">Загрузка реестров выданных СИЗ, СИ и оборудования из Excel</div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import api, { apiError } from "../api/client.js";
 import { Badge, Spinner, EmptyState, Modal, Field, Input, Select, Alert } from "../components/ui.jsx";
 import { ROLE_LABEL } from "../lib/format.js";
 import { IconPlus, IconEdit, IconLock, IconUnlock, IconShieldUser } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -40,7 +41,7 @@ export default function Users() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Пользователи</h1>
+          <PageHeading>Пользователи</PageHeading>
           <div className="subtitle">Учётные записи, роли и доступ к подразделениям.</div>
         </div>
         <button className="btn btn-primary" onClick={() => setModal({})}>

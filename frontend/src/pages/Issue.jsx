@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, Field, Input, Select, Textarea, Alert, SearchBox } from "../components/ui.jsx";
 import { ITEM_TYPE_LABEL } from "../lib/format.js";
 import { IconArrowOut, IconBox } from "../components/icons.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -97,7 +98,7 @@ export default function Issue() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Выдача имущества</h1>
+          <PageHeading>Выдача имущества</PageHeading>
           <div className="subtitle">Передача позиций со склада сотруднику. Срок эксплуатации стартует с даты выдачи.</div>
         </div>
       </div>
