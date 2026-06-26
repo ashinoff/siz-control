@@ -77,7 +77,7 @@ export default function Journal() {
             <IconDownload size={16} /> Excel
           </button>
           {isAdmin && (
-            <button className="btn btn-danger" onClick={() => setPurgeOpen(true)}>
+            <button className="btn btn-outline-danger" onClick={() => setPurgeOpen(true)}>
               <IconTrash size={16} /> Очистить по периоду
             </button>
           )}

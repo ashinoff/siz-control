@@ -481,6 +481,18 @@ button {
 .btn-danger:hover:not(:disabled) {
   background: #a11414;
 }
+/* Solid red outline only — fills subtly on hover. */
+.btn-outline-danger {
+  background: var(--surface);
+  border-color: var(--red);
+  color: var(--red);
+  font-weight: 600;
+}
+.btn-outline-danger:hover:not(:disabled) {
+  background: var(--red-bg);
+  border-color: #a11414;
+  color: #a11414;
+}
 .btn-sm {
   padding: 5px 10px;
   font-size: 12.5px;
