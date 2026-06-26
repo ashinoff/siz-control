@@ -7,6 +7,7 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -333,9 +334,29 @@ def verify_item(
     )
     db.add(record)
 
-    # A failed verification flags the item for write-off.
+    # A failed verification condemns the item: move it to the write-off queue
+    # and detach it from its warehouse shelf (and from an employee, closing the
+    # open assignment) so it leaves circulation.
     if payload.result == VerificationResult.FAILED:
         item.status = InventoryStatus.TO_WRITEOFF.value
+        item.current_warehouse_id = None
+        if item.current_employee_id is not None:
+            open_asn = (
+                db.query(Assignment)
+                .filter(
+                    Assignment.inventory_item_id == item.id,
+                    Assignment.returned_date.is_(None),
+                )
+                .order_by(Assignment.issued_date.desc())
+                .first()
+            )
+            if open_asn:
+                open_asn.returned_date = payload.verification_date
+                open_asn.returned_by_user_id = current.id
+                open_asn.return_condition = ReturnCondition.NEEDS_WRITEOFF.value
+                open_asn.return_comment = "Поверка не пройдена — в списание"
+            item.current_employee_id = None
+            item.date_issued = None
 
     log_movement(
         db,
@@ -350,6 +371,87 @@ def verify_item(
     )
     db.commit()
     return {"detail": "Поверка зарегистрирована", "next_verification_date": str(next_date) if next_date else None}
+
+
+class CondemnRequest(BaseModel):
+    inventory_item_id: int
+    comment: Optional[str] = None
+
+
+@router.post("/condemn")
+def condemn_item(
+    payload: CondemnRequest,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Mark an in-stock item as unfit and move it to the write-off queue.
+
+    The item is detached from its warehouse shelf and its status becomes
+    "К списанию", so it shows up in the «Списание» section. Items currently
+    issued to an employee must go through the return flow (condition «Требует
+    списания») instead — that path already detaches and condemns them.
+    """
+    item = db.query(InventoryItem).filter(InventoryItem.id == payload.inventory_item_id).first()
+    if not item or not item.is_active:
+        raise HTTPException(status_code=404, detail="Позиция не найдена")
+    assert_department_access(current, item.department_owner_id)
+
+    if item.status == InventoryStatus.ISSUED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Позиция выдана сотруднику. Оформите возврат с состоянием «Требует списания».",
+        )
+    if item.status == InventoryStatus.WRITTEN_OFF.value:
+        raise HTTPException(status_code=400, detail="Позиция уже списана.")
+
+    item.status = InventoryStatus.TO_WRITEOFF.value
+    item.current_warehouse_id = None
+
+    log_movement(
+        db,
+        user_id=current.id,
+        operation_type=OperationType.UPDATE.value,
+        inventory_item_id=item.id,
+        department_id=item.department_owner_id,
+        object_label=item.catalog_item.name if item.catalog_item else None,
+        new_value={"status": item.status},
+        comment=payload.comment or "Отмечено негодным — в списание",
+    )
+    db.commit()
+    return {"detail": "Позиция отправлена в раздел «Списание»"}
+
+
+@router.post("/restore/{item_id}")
+def restore_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_privileged),
+):
+    """Undo a condemnation: return a to-be-written-off item back to stock."""
+    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Позиция не найдена")
+    if item.status != InventoryStatus.TO_WRITEOFF.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Вернуть на склад можно только позицию со статусом «К списанию».",
+        )
+    item.status = InventoryStatus.IN_STOCK.value
+    item.current_employee_id = None
+    item.current_warehouse_id = _default_warehouse_id(db, item.department_owner_id)
+
+    log_movement(
+        db,
+        user_id=current.id,
+        operation_type=OperationType.UPDATE.value,
+        inventory_item_id=item.id,
+        department_id=item.department_owner_id,
+        object_label=item.catalog_item.name if item.catalog_item else None,
+        new_value={"status": item.status},
+        comment="Возврат из списания на склад",
+    )
+    db.commit()
+    return {"detail": "Позиция возвращена на склад"}
 
 
 @router.post("/writeoff/{item_id}")

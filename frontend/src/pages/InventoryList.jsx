@@ -14,7 +14,7 @@ import {
   VERIF_BADGE,
   fmtDate,
 } from "../lib/format.js";
-import { IconPlus, IconEdit, IconTrash, IconBox, IconDownload } from "../components/icons.jsx";
+import { IconPlus, IconEdit, IconTrash, IconBox, IconDownload, IconWriteoff } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
 import PageHeading from "../components/PageHeading.jsx";
 
@@ -43,6 +43,7 @@ export default function InventoryList({ scope }) {
   const [editItem, setEditItem] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [toDelete, setToDelete] = useState(null);
+  const [toCondemn, setToCondemn] = useState(null);
   const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
@@ -78,6 +79,16 @@ export default function InventoryList({ scope }) {
     try {
       await api.delete(`/api/inventory/${toDelete.id}`);
       setToDelete(null);
+      load();
+    } catch (e) {
+      alert(apiError(e));
+    }
+  };
+
+  const doCondemn = async () => {
+    try {
+      await api.post("/api/operations/condemn", { inventory_item_id: toCondemn.id });
+      setToCondemn(null);
       load();
     } catch (e) {
       alert(apiError(e));
@@ -248,6 +259,16 @@ export default function InventoryList({ scope }) {
                           <button className="btn btn-icon btn-ghost" title="Изменить" onClick={() => openEdit(it)}>
                             <IconEdit size={16} />
                           </button>
+                          {it.status === "in_stock" && (
+                          <button
+                            className="btn btn-icon btn-ghost"
+                            title="Отметить негодным (в списание)"
+                            style={{ color: "#e8830c" }}
+                            onClick={() => setToCondemn(it)}
+                          >
+                            <IconWriteoff size={16} />
+                          </button>
+                          )}
                           {isAdmin && it.status === "in_stock" && (
                           <button
                             className="btn btn-icon btn-ghost"
@@ -285,6 +306,15 @@ export default function InventoryList({ scope }) {
         confirmText="Удалить"
         onConfirm={doDelete}
         onClose={() => setToDelete(null)}
+      />
+      <ConfirmDialog
+        open={!!toCondemn}
+        danger
+        title="Отметить негодным?"
+        message={`Позиция «${toCondemn?.catalog_item?.name || ""}» будет снята со склада и перенесена в раздел «Списание».`}
+        confirmText="В списание"
+        onConfirm={doCondemn}
+        onClose={() => setToCondemn(null)}
       />
     </div>
   );

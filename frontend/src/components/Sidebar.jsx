@@ -21,6 +21,7 @@ import {
   IconChartBar,
   IconUpload,
   IconDatabase,
+  IconWriteoff,
 } from "./icons.jsx";
 
 const SECTIONS = [
@@ -45,6 +46,7 @@ const SECTIONS = [
       { to: "/return", icon: IconArrowIn, label: "Возврат" },
       { to: "/move", icon: IconMove, label: "Перемещение", privileged: true },
       { to: "/verify", icon: IconCheckShield, label: "Поверка", privileged: true, neon: true },
+      { to: "/writeoff", icon: IconWriteoff, label: "Списание", neon: "amber" },
     ],
   },
   {
@@ -102,6 +104,12 @@ export default function Sidebar({ open, alerts = 0, onNavigate }) {
               <div className="nav-section-label">{section.label}</div>
               {items.map((item) => {
                 const Icon = item.icon;
+                const neonStyle =
+                  item.neon === "amber"
+                    ? { color: "#e8830c", filter: "drop-shadow(0 0 4px rgba(232,131,12,0.9))" }
+                    : item.neon
+                    ? { color: "#ff1f2e", filter: "drop-shadow(0 0 4px rgba(255,31,46,0.9))" }
+                    : undefined;
                 return (
                   <NavLink
                     key={item.to}
@@ -110,15 +118,7 @@ export default function Sidebar({ open, alerts = 0, onNavigate }) {
                     className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
                     onClick={onNavigate}
                   >
-                    <Icon
-                      className="ico"
-                      size={18}
-                      style={
-                        item.neon
-                          ? { color: "#ff1f2e", filter: "drop-shadow(0 0 4px rgba(255,31,46,0.9))" }
-                          : undefined
-                      }
-                    />
+                    <Icon className="ico" size={18} style={neonStyle} />
                     <span>{item.label}</span>
                     {item.alertKey && alerts > 0 && (
                       <span className="badge-count">{alerts}</span>

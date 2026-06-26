@@ -10,7 +10,11 @@ export default function PageHeading({ children }) {
   const meta = routeMeta(pathname);
   const Icon = meta?.icon;
   const iconClass =
-    meta?.neon === "red" ? "page-h1-ico page-h1-ico-red" : "page-h1-ico";
+    meta?.neon === "red"
+      ? "page-h1-ico page-h1-ico-red"
+      : meta?.neon === "amber"
+      ? "page-h1-ico page-h1-ico-amber"
+      : "page-h1-ico";
 
   return (
     <h1 className="page-h1">

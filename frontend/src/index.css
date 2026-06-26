@@ -298,6 +298,13 @@ button {
   filter: drop-shadow(0 0 4px rgba(255, 31, 46, 0.9));
 }
 
+/* Neon-amber variant — for the write-off section. */
+.page-h1-ico-amber {
+  color: #e8830c;
+  filter: drop-shadow(0 0 5px rgba(232, 131, 12, 0.85))
+    drop-shadow(0 0 9px rgba(232, 131, 12, 0.5));
+}
+
 /* Topbar running blurb describing the current section. Click to open help. */
 .topbar .marquee {
   flex: 1;

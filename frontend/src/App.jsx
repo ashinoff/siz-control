@@ -13,6 +13,7 @@ import Issue from "./pages/Issue.jsx";
 import Return from "./pages/Return.jsx";
 import Move from "./pages/Move.jsx";
 import Verify from "./pages/Verify.jsx";
+import Writeoff from "./pages/Writeoff.jsx";
 import DeadlineControl from "./pages/DeadlineControl.jsx";
 import Reports from "./pages/Reports.jsx";
 import Journal from "./pages/Journal.jsx";
@@ -80,6 +81,7 @@ export default function App() {
             </RoleGuard>
           }
         />
+        <Route path="/writeoff" element={<Writeoff />} />
         <Route path="/norms" element={<Norms />} />
         <Route path="/compliance" element={<Compliance />} />
         <Route path="/deadlines" element={<DeadlineControl />} />
