@@ -28,6 +28,7 @@ class NormItemOut(BaseModel):
     catalog_item_id: int
     catalog_item: Optional[CatalogItemOut] = None
     quantity: int
+    alt_group: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -120,10 +121,67 @@ def add_norm_item(
     )
     if existing:
         existing.quantity = item.quantity
+        # Keep the whole interchangeability group on the same quantity.
+        if existing.alt_group is not None:
+            db.query(PositionNorm).filter(
+                PositionNorm.position == position,
+                PositionNorm.alt_group == existing.alt_group,
+            ).update({PositionNorm.quantity: item.quantity})
     else:
         db.add(PositionNorm(position=position, catalog_item_id=item.catalog_item_id, quantity=item.quantity))
     db.commit()
     return {"detail": "Добавлено"}
+
+
+@router.post("/{position}/{norm_id}/alternative")
+def add_alternative(
+    position: str,
+    norm_id: int,
+    item: NormItemIn,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_privileged),
+):
+    """Add an interchangeable alternative ("или") to an existing requirement.
+
+    The new catalog item joins the anchor row's group, so issuing either the
+    anchor item or any alternative satisfies the same requirement.
+    """
+    anchor = (
+        db.query(PositionNorm)
+        .filter(PositionNorm.id == norm_id, PositionNorm.position == position)
+        .first()
+    )
+    if not anchor:
+        raise HTTPException(status_code=404, detail="Позиция норматива не найдена")
+
+    cat = db.query(CatalogItem).filter(CatalogItem.id == item.catalog_item_id).first()
+    if not cat:
+        raise HTTPException(status_code=400, detail=f"Позиция каталога {item.catalog_item_id} не найдена")
+
+    # A catalog item may appear only once per position.
+    dup = (
+        db.query(PositionNorm)
+        .filter(
+            PositionNorm.position == position,
+            PositionNorm.catalog_item_id == item.catalog_item_id,
+        )
+        .first()
+    )
+    if dup:
+        raise HTTPException(status_code=400, detail="Эта позиция уже есть в нормативе")
+
+    # Materialise the group on the anchor if it doesn't have one yet.
+    if anchor.alt_group is None:
+        anchor.alt_group = anchor.id
+
+    db.add(PositionNorm(
+        position=position,
+        catalog_item_id=item.catalog_item_id,
+        quantity=anchor.quantity,
+        alt_group=anchor.alt_group,
+    ))
+    db.commit()
+    return {"detail": "Альтернатива добавлена"}
 
 
 @router.delete("/{position}/{norm_id}")
@@ -136,7 +194,21 @@ def remove_norm_item(
     norm = db.query(PositionNorm).filter(PositionNorm.id == norm_id, PositionNorm.position == position).first()
     if not norm:
         raise HTTPException(status_code=404, detail="Запись не найдена")
+    group = norm.alt_group
     db.delete(norm)
+    db.flush()
+
+    # If the interchangeability group now has a single member, dissolve it
+    # back into a plain standalone requirement.
+    if group is not None:
+        members = (
+            db.query(PositionNorm)
+            .filter(PositionNorm.position == position, PositionNorm.alt_group == group)
+            .all()
+        )
+        if len(members) == 1:
+            members[0].alt_group = None
+
     db.commit()
     return {"detail": "Удалено"}
 
@@ -199,23 +271,39 @@ def _calc_compliance(db: Session, scope_department_id: Optional[int] = None):
             if d == DeadlineStatus.EXPIRED:
                 expired_catalog_ids.add(item.catalog_item_id)
 
+        # Collapse interchangeability groups into single requirements. A group
+        # (rows sharing a non-null alt_group) is satisfied by ANY member, so we
+        # sum issued quantities across all members. Standalone rows (alt_group
+        # is None) each form their own requirement, keyed by row id.
+        requirements: Dict[object, List[PositionNorm]] = defaultdict(list)
+        for norm in position_norms:
+            key = ("g", norm.alt_group) if norm.alt_group is not None else ("s", norm.id)
+            requirements[key].append(norm)
+
         details = []
         total_required = 0
         total_issued = 0
         total_expired = 0
 
-        for norm in position_norms:
-            req = norm.quantity
-            have = min(issued_by_catalog.get(norm.catalog_item_id, 0), req)
-            is_expired = norm.catalog_item_id in expired_catalog_ids
+        for members in requirements.values():
+            req = max(m.quantity for m in members)
+            member_ids = [m.catalog_item_id for m in members]
+            have = min(sum(issued_by_catalog.get(cid, 0) for cid in member_ids), req)
+            # Expired if a member that the employee actually holds is expired.
+            is_expired = any(
+                cid in expired_catalog_ids and issued_by_catalog.get(cid, 0) > 0
+                for cid in member_ids
+            )
             total_required += req
             total_issued += have
             if is_expired:
                 total_expired += 1
 
+            names = [m.catalog_item.name for m in members if m.catalog_item]
             details.append({
-                "catalog_item_id": norm.catalog_item_id,
-                "name": norm.catalog_item.name if norm.catalog_item else "",
+                "catalog_item_id": member_ids[0],
+                "name": " / ".join(names) if names else "",
+                "alternatives": names,
                 "required": req,
                 "issued": have,
                 "missing": max(0, req - have),

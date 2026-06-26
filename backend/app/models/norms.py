@@ -14,4 +14,11 @@ class PositionNorm(Base, TimestampMixin):
     catalog_item_id = Column(Integer, ForeignKey("catalog_items.id"), nullable=False)
     quantity = Column(Integer, default=1, nullable=False)
 
+    # Interchangeability group. Rows within the same position sharing the same
+    # non-null ``alt_group`` are alternatives ("или") for ONE requirement: the
+    # requirement is satisfied by issuing ANY of the member catalog items.
+    # NULL means a standalone requirement (legacy behaviour — satisfied only by
+    # that exact catalog item). The group id equals the id of the anchor row.
+    alt_group = Column(Integer, nullable=True, index=True)
+
     catalog_item = relationship("CatalogItem")

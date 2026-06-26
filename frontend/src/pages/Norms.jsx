@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Spinner, EmptyState, Select, SearchBox, Badge, Field, Input } from "../components/ui.jsx";
-import { IconPlus, IconTrash, IconShield } from "../components/icons.jsx";
+import { IconPlus, IconTrash, IconShield, IconX } from "../components/icons.jsx";
 
 export default function Norms() {
   const { isPrivileged } = useAuth();
@@ -12,6 +12,10 @@ export default function Norms() {
   const [catalog, setCatalog] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  // When set to a norm id, picking a catalog item adds it as an
+  // interchangeable alternative ("или") to that requirement instead of
+  // creating a new one.
+  const [altTarget, setAltTarget] = useState(null);
 
   useEffect(() => {
     api.get("/api/norms/positions").then(({ data }) => {
@@ -38,10 +42,17 @@ export default function Norms() {
 
   const addItem = async (catalogItem) => {
     try {
-      await api.post(`/api/norms/${encodeURIComponent(position)}/add`, {
-        catalog_item_id: catalogItem.id,
-        quantity: 1,
-      });
+      if (altTarget != null) {
+        await api.post(
+          `/api/norms/${encodeURIComponent(position)}/${altTarget}/alternative`,
+          { catalog_item_id: catalogItem.id, quantity: 1 }
+        );
+      } else {
+        await api.post(`/api/norms/${encodeURIComponent(position)}/add`, {
+          catalog_item_id: catalogItem.id,
+          quantity: 1,
+        });
+      }
       loadNorm();
     } catch (e) {
       alert(apiError(e));
@@ -51,6 +62,20 @@ export default function Norms() {
   const removeItem = async (normId) => {
     try {
       await api.delete(`/api/norms/${encodeURIComponent(position)}/${normId}`);
+      loadNorm();
+    } catch (e) {
+      alert(apiError(e));
+    }
+  };
+
+  // Remove a whole requirement (all interchangeable members), sequentially to
+  // avoid racing the server-side group bookkeeping.
+  const removeGroup = async (memberIds) => {
+    try {
+      for (const id of memberIds) {
+        await api.delete(`/api/norms/${encodeURIComponent(position)}/${id}`);
+      }
+      if (memberIds.includes(altTarget)) setAltTarget(null);
       loadNorm();
     } catch (e) {
       alert(apiError(e));
@@ -73,6 +98,24 @@ export default function Norms() {
 
   const normCatalogIds = new Set(normItems.map((n) => n.catalog_item_id));
 
+  // Collapse interchangeability groups (rows sharing alt_group) into one
+  // requirement; standalone rows are their own group, keyed by id.
+  const groups = [];
+  const groupByKey = new Map();
+  for (const n of normItems) {
+    const key = n.alt_group != null ? `g${n.alt_group}` : `s${n.id}`;
+    let g = groupByKey.get(key);
+    if (!g) {
+      g = { key, anchorId: n.id, members: [] };
+      groupByKey.set(key, g);
+      groups.push(g);
+    }
+    g.members.push(n);
+  }
+  const altTargetGroup = altTarget != null
+    ? groups.find((g) => g.members.some((m) => m.id === altTarget))
+    : null;
+
   const filteredCatalog = catalog.filter((c) => {
     if (normCatalogIds.has(c.id)) return false;
     if (c.item_type !== "ppe" && c.item_type !== "equipment") return false;
@@ -94,7 +137,13 @@ export default function Norms() {
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>
         <Field label="Должность">
-          <Select value={position} onChange={(e) => setPosition(e.target.value)}>
+          <Select
+            value={position}
+            onChange={(e) => {
+              setPosition(e.target.value);
+              setAltTarget(null);
+            }}
+          >
             {positions.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
@@ -111,6 +160,30 @@ export default function Norms() {
           <div style={{ padding: "12px 16px 0" }}>
             <SearchBox value={search} onChange={setSearch} placeholder="Поиск по наименованию" />
           </div>
+          {altTarget != null && (
+            <div
+              style={{
+                margin: "12px 16px 0",
+                padding: "8px 12px",
+                borderRadius: 8,
+                background: "var(--navy-50, #eef2ff)",
+                border: "1px solid var(--navy)",
+                fontSize: 13,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <span>
+                Режим «или»: выбранная позиция станет альтернативой к «
+                {altTargetGroup?.members?.[0]?.catalog_item?.name || "—"}»
+              </span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setAltTarget(null)}>
+                Отмена
+              </button>
+            </div>
+          )}
           <div style={{ maxHeight: 500, overflowY: "auto" }}>
             {filteredCatalog.length === 0 ? (
               <EmptyState title="Нет доступных позиций" icon={<IconShield size={32} />} />
@@ -175,43 +248,76 @@ export default function Norms() {
                   <tr>
                     <th>Наименование</th>
                     <th style={{ width: 80, textAlign: "center" }}>Кол-во</th>
-                    {isPrivileged && <th style={{ width: 50 }}></th>}
+                    {isPrivileged && <th style={{ width: 90 }}></th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {normItems.map((n) => (
-                    <tr key={n.id}>
-                      <td className="cell-strong">{n.catalog_item?.name || "—"}</td>
-                      <td style={{ textAlign: "center" }}>
-                        {isPrivileged ? (
-                          <input
-                            type="number"
-                            min={1}
-                            value={n.quantity}
-                            onChange={(e) => {
-                              const v = Math.max(1, Number(e.target.value) || 1);
-                              updateQty(n.id, v);
-                            }}
-                            style={{ width: 50, textAlign: "center", padding: "2px 4px" }}
-                          />
-                        ) : (
-                          n.quantity
-                        )}
-                      </td>
-                      {isPrivileged && (
-                        <td>
-                          <button
-                            className="btn btn-icon btn-ghost"
-                            title="Удалить из норматива"
-                            style={{ color: "var(--red)" }}
-                            onClick={() => removeItem(n.id)}
-                          >
-                            <IconTrash size={16} />
-                          </button>
+                  {groups.map((g) => {
+                    const anchor = g.members[0];
+                    const isAltTarget = g.members.some((m) => m.id === altTarget);
+                    return (
+                      <tr key={g.key}>
+                        <td className="cell-strong">
+                          {g.members.map((m, i) => (
+                            <span key={m.id}>
+                              {i > 0 && (
+                                <span className="text-muted" style={{ margin: "0 6px", fontStyle: "italic" }}>
+                                  или
+                                </span>
+                              )}
+                              {m.catalog_item?.name || "—"}
+                              {isPrivileged && g.members.length > 1 && (
+                                <button
+                                  className="btn btn-icon btn-ghost"
+                                  title="Убрать эту альтернативу"
+                                  style={{ color: "var(--red)", padding: "0 2px", verticalAlign: "middle" }}
+                                  onClick={() => removeItem(m.id)}
+                                >
+                                  <IconX size={13} />
+                                </button>
+                              )}
+                            </span>
+                          ))}
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td style={{ textAlign: "center" }}>
+                          {isPrivileged ? (
+                            <input
+                              type="number"
+                              min={1}
+                              value={anchor.quantity}
+                              onChange={(e) => {
+                                const v = Math.max(1, Number(e.target.value) || 1);
+                                updateQty(anchor.id, v);
+                              }}
+                              style={{ width: 50, textAlign: "center", padding: "2px 4px" }}
+                            />
+                          ) : (
+                            anchor.quantity
+                          )}
+                        </td>
+                        {isPrivileged && (
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <button
+                              className="btn btn-icon btn-ghost"
+                              title="Добавить взаимозаменяемую позицию (или)"
+                              style={{ color: isAltTarget ? "var(--navy)" : undefined }}
+                              onClick={() => setAltTarget(isAltTarget ? null : anchor.id)}
+                            >
+                              <span style={{ fontSize: 12, fontWeight: 600 }}>или</span>
+                            </button>
+                            <button
+                              className="btn btn-icon btn-ghost"
+                              title="Удалить требование"
+                              style={{ color: "var(--red)" }}
+                              onClick={() => removeGroup(g.members.map((m) => m.id))}
+                            >
+                              <IconTrash size={16} />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
