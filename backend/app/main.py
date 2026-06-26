@@ -58,9 +58,59 @@ app.add_middleware(
 )
 
 
+def _wait_for_db(max_attempts: int = 15, delay_seconds: float = 3.0) -> None:
+    """Block until the database accepts a connection, retrying on failure.
+
+    On Amvera the app container can start before the database's DNS name is
+    resolvable, so the very first connection raises (e.g. psycopg
+    OperationalError "Temporary failure in name resolution"). Rather than rely
+    on the container being restarted, we retry the connection a bounded number
+    of times and only proceed once the database actually answers. If it never
+    does, we re-raise the last error so startup fails loudly and clearly.
+    """
+    import time
+
+    from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError
+
+    last_error: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            logger.info("Database connection established (attempt %d/%d).", attempt, max_attempts)
+            return
+        except SQLAlchemyError as exc:  # connection/DNS/auth errors surface here
+            last_error = exc
+            if attempt < max_attempts:
+                logger.warning(
+                    "Database not ready (attempt %d/%d): %s. Retrying in %.1fs...",
+                    attempt,
+                    max_attempts,
+                    exc.__class__.__name__,
+                    delay_seconds,
+                )
+                time.sleep(delay_seconds)
+            else:
+                logger.warning(
+                    "Database not ready (attempt %d/%d): %s.",
+                    attempt,
+                    max_attempts,
+                    exc.__class__.__name__,
+                )
+
+    logger.error("Database unreachable after %d attempts; aborting startup.", max_attempts)
+    raise RuntimeError(
+        f"Could not connect to the database after {max_attempts} attempts"
+    ) from last_error
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     """Create database tables and seed structural data (roles, departments, admin)."""
+    # Wait out the start-up race where the DB's DNS name isn't resolvable yet.
+    _wait_for_db()
+
     Base.metadata.create_all(bind=engine)
     logger.info("Database schema ensured (%s).", "sqlite" if settings.is_sqlite else "postgresql")
 
