@@ -81,7 +81,7 @@ export default function Layout() {
               onClick={() => setHelpOpen(true)}
             >
               <span className="marquee-track">
-                <span className="marquee-hint">ℹ️ {title}: </span>
+                <span className="marquee-hint">{title}: </span>
                 {meta.blurb}
                 <span className="marquee-hint"> — нажмите для инструкции</span>
               </span>

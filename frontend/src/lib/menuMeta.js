@@ -107,6 +107,7 @@ export const ROUTE_META = {
   },
   "/verify": {
     icon: IconCheckShield,
+    neon: "red",
     blurb: "Поверка приборов: регистрация результата и продление срока.",
     help: {
       what: "Регистрация поверки/проверки и установка следующей даты.",
@@ -134,6 +135,7 @@ export const ROUTE_META = {
   },
   "/deadlines": {
     icon: IconClock,
+    neon: "red",
     blurb: "Контроль сроков: истекающие сроки службы и поверки.",
     help: {
       what: "Список позиций с истекающими или истёкшими сроками.",

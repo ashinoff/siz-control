@@ -9,10 +9,12 @@ export default function PageHeading({ children }) {
   const { pathname } = useLocation();
   const meta = routeMeta(pathname);
   const Icon = meta?.icon;
+  const iconClass =
+    meta?.neon === "red" ? "page-h1-ico page-h1-ico-red" : "page-h1-ico";
 
   return (
     <h1 className="page-h1">
-      {Icon && <Icon className="page-h1-ico" size={26} />}
+      {Icon && <Icon className={iconClass} size={26} />}
       <span>{children}</span>
     </h1>
   );

@@ -112,7 +112,7 @@ export default function Verify() {
                     </td>
                     <td>
                       <button className="btn btn-secondary btn-sm" onClick={() => setSelected(it)}>
-                        <IconCheckShield className="ico-neon-blue" size={15} /> Поверка
+                        <IconCheckShield className="ico-neon-red" size={15} /> Поверка
                       </button>
                     </td>
                   </tr>

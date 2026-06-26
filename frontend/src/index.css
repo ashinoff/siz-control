@@ -287,6 +287,17 @@ button {
   filter: drop-shadow(0 0 4px rgba(30, 107, 255, 0.9));
 }
 
+/* Neon-red variants — for critical sections (поверка, контроль сроков). */
+.page-h1-ico-red {
+  color: #ff1f2e;
+  filter: drop-shadow(0 0 5px rgba(255, 31, 46, 0.85))
+    drop-shadow(0 0 9px rgba(255, 31, 46, 0.5));
+}
+.ico-neon-red {
+  color: #ff1f2e;
+  filter: drop-shadow(0 0 4px rgba(255, 31, 46, 0.9));
+}
+
 /* Topbar running blurb describing the current section. Click to open help. */
 .topbar .marquee {
   flex: 1;
