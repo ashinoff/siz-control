@@ -298,12 +298,20 @@ export default function Norms() {
                         {isPrivileged && (
                           <td style={{ whiteSpace: "nowrap" }}>
                             <button
-                              className="btn btn-icon btn-ghost"
+                              className="btn btn-sm"
                               title="Добавить взаимозаменяемую позицию (или)"
-                              style={{ color: isAltTarget ? "var(--navy)" : undefined }}
+                              style={{
+                                padding: "2px 10px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                borderRadius: 999,
+                                border: "1px solid var(--navy)",
+                                color: isAltTarget ? "#fff" : "var(--navy)",
+                                background: isAltTarget ? "var(--navy)" : "var(--navy-50, #eef2ff)",
+                              }}
                               onClick={() => setAltTarget(isAltTarget ? null : anchor.id)}
                             >
-                              <span style={{ fontSize: 12, fontWeight: 600 }}>или</span>
+                              + или
                             </button>
                             <button
                               className="btn btn-icon btn-ghost"

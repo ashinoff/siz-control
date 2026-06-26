@@ -62,6 +62,14 @@ export const LIFE_UNIT_OPTIONS = [
   { value: "years", label: "Лет" },
 ];
 
+// Unit of measure (единица измерения) for catalog items.
+export const MEASURE_UNIT_OPTIONS = [
+  { value: "шт", label: "шт" },
+  { value: "пара", label: "пара" },
+  { value: "комплект", label: "комплект" },
+  { value: "пол", label: "пол" },
+];
+
 export const EMPLOYEE_STATUS_LABEL = {
   working: "Работает",
   dismissed: "Уволен",
