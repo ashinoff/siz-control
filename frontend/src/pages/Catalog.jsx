@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Badge, Spinner, EmptyState, Modal, Field, Input, Textarea, Select, Alert, ConfirmDialog } from "../components/ui.jsx";
-import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS, MEASURE_UNIT_OPTIONS, fmtLife } from "../lib/format.js";
+import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS, MEASURE_UNIT_OPTIONS, GENDER_OPTIONS, fmtLife } from "../lib/format.js";
 import { IconPlus, IconEdit, IconTrash, IconBook } from "../components/icons.jsx";
 
 const TYPE_TABS = [
@@ -316,6 +316,7 @@ function Nomenclature({ type }) {
                   <th>Наименование</th>
                   <th>Категория</th>
                   <th>Ед. изм.</th>
+                  <th>Пол</th>
                   <th>Срок службы</th>
                   <th>Поверка</th>
                   <th>Период поверки</th>
@@ -334,6 +335,7 @@ function Nomenclature({ type }) {
                       {it.subcategory ? ` / ${it.subcategory.name}` : ""}
                     </td>
                     <td>{it.unit || "—"}</td>
+                    <td>{it.gender || "—"}</td>
                     <td>{fmtLife(it.life_value, it.life_unit)}</td>
                     <td>
                       {it.requires_verification ? (
@@ -387,6 +389,7 @@ function CatalogItemModal({ item, type, onClose, onSaved }) {
     name: item.name || "",
     description: item.description || "",
     unit: item.unit || "шт",
+    gender: item.gender || "",
     category_id: item.category_id || "",
     subcategory_id: item.subcategory_id || "",
     life_value: item.life_value ?? "",
@@ -415,6 +418,7 @@ function CatalogItemModal({ item, type, onClose, onSaved }) {
       name: form.name,
       description: form.description || null,
       unit: form.unit || null,
+      gender: form.gender || null,
       category_id: form.category_id ? Number(form.category_id) : null,
       subcategory_id: form.subcategory_id ? Number(form.subcategory_id) : null,
       life_value: form.life_value === "" ? null : Number(form.life_value),
@@ -475,6 +479,13 @@ function CatalogItemModal({ item, type, onClose, onSaved }) {
         <Field label="Единица измерения">
           <Select value={form.unit} onChange={(e) => set("unit", e.target.value)}>
             {MEASURE_UNIT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Пол">
+          <Select value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+            {GENDER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </Select>

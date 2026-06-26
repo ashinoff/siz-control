@@ -67,7 +67,13 @@ export const MEASURE_UNIT_OPTIONS = [
   { value: "шт", label: "шт" },
   { value: "пара", label: "пара" },
   { value: "комплект", label: "комплект" },
-  { value: "пол", label: "пол" },
+];
+
+// Gender (пол) for catalog items — optional, mostly for clothing/footwear.
+export const GENDER_OPTIONS = [
+  { value: "", label: "— не задан —" },
+  { value: "мужской", label: "Мужской" },
+  { value: "женский", label: "Женский" },
 ];
 
 export const EMPLOYEE_STATUS_LABEL = {

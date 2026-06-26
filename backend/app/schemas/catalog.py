@@ -54,6 +54,7 @@ class CatalogItemBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: Optional[str] = None
     unit: Optional[str] = Field(default="шт", max_length=20)
+    gender: Optional[str] = Field(default=None, max_length=20)
     life_value: Optional[int] = None
     life_unit: Optional[LifeUnit] = LifeUnit.MONTHS
     requires_verification: bool = False
@@ -72,6 +73,7 @@ class CatalogItemUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     unit: Optional[str] = None
+    gender: Optional[str] = None
     life_value: Optional[int] = None
     life_unit: Optional[LifeUnit] = None
     requires_verification: Optional[bool] = None
@@ -90,6 +92,7 @@ class CatalogItemOut(ORMModel):
     name: str
     description: Optional[str] = None
     unit: Optional[str] = None
+    gender: Optional[str] = None
     life_value: Optional[int] = None
     life_unit: Optional[str] = None
     requires_verification: bool

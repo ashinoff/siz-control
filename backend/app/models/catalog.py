@@ -48,8 +48,10 @@ class CatalogItem(Base, TimestampMixin, SoftDeleteMixin):
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
 
-    # Unit of measure (единица измерения): шт / пара / комплект / пол.
+    # Unit of measure (единица измерения): шт / пара / комплект.
     unit = Column(String(20), nullable=True, default="шт")
+    # Gender (пол): мужской / женский — optional, mainly for clothing/footwear.
+    gender = Column(String(20), nullable=True)
 
     # Normative service life
     life_value = Column(Integer, nullable=True)
