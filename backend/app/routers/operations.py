@@ -51,17 +51,21 @@ def _default_warehouse_id(db: Session, department_id: int) -> Optional[int]:
 def issue_items(
     payload: IssueRequest,
     db: Session = Depends(get_db),
-    current: User = Depends(require_privileged),
+    current: User = Depends(get_current_user),
 ):
     employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    # RES users may only issue to staff of their own department.
+    assert_department_access(current, employee.department_id)
 
     issued: List[int] = []
     for entry in payload.items:
         item = db.query(InventoryItem).filter(InventoryItem.id == entry.inventory_item_id).first()
         if not item or not item.is_active:
             raise HTTPException(status_code=404, detail=f"Позиция {entry.inventory_item_id} не найдена")
+        # RES users may only issue stock owned by their own department.
+        assert_department_access(current, item.department_owner_id)
         if item.status == InventoryStatus.ISSUED.value:
             raise HTTPException(status_code=400, detail=f"Позиция {entry.inventory_item_id} уже выдана сотруднику")
         if item.status == InventoryStatus.WRITTEN_OFF.value:
@@ -146,17 +150,21 @@ def issue_items(
 def return_items(
     payload: ReturnRequest,
     db: Session = Depends(get_db),
-    current: User = Depends(require_privileged),
+    current: User = Depends(get_current_user),
 ):
     employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    # RES users may only return items for staff of their own department.
+    assert_department_access(current, employee.department_id)
 
     returned: List[int] = []
     for entry in payload.items:
         item = db.query(InventoryItem).filter(InventoryItem.id == entry.inventory_item_id).first()
         if not item:
             raise HTTPException(status_code=404, detail=f"Позиция {entry.inventory_item_id} не найдена")
+        # RES users may only touch stock owned by their own department.
+        assert_department_access(current, item.department_owner_id)
         if item.current_employee_id != employee.id:
             raise HTTPException(
                 status_code=400,

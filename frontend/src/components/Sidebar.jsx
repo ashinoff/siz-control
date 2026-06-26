@@ -44,7 +44,7 @@ const SECTIONS = [
       { to: "/issue", icon: IconArrowOut, label: "Выдача" },
       { to: "/return", icon: IconArrowIn, label: "Возврат" },
       { to: "/move", icon: IconMove, label: "Перемещение", privileged: true },
-      { to: "/verify", icon: IconCheckShield, label: "Поверка", privileged: true },
+      { to: "/verify", icon: IconCheckShield, label: "Поверка", privileged: true, neon: true },
     ],
   },
   {
@@ -57,7 +57,7 @@ const SECTIONS = [
   {
     label: "Контроль",
     items: [
-      { to: "/deadlines", icon: IconClock, label: "Контроль сроков", alertKey: true },
+      { to: "/deadlines", icon: IconClock, label: "Контроль сроков", alertKey: true, neon: true },
       { to: "/reports", icon: IconReport, label: "Отчеты" },
       { to: "/journal", icon: IconList, label: "Журнал действий" },
     ],
@@ -110,7 +110,15 @@ export default function Sidebar({ open, alerts = 0, onNavigate }) {
                     className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
                     onClick={onNavigate}
                   >
-                    <Icon className="ico" size={18} />
+                    <Icon
+                      className="ico"
+                      size={18}
+                      style={
+                        item.neon
+                          ? { color: "#ff1f2e", filter: "drop-shadow(0 0 4px rgba(255,31,46,0.9))" }
+                          : undefined
+                      }
+                    />
                     <span>{item.label}</span>
                     {item.alertKey && alerts > 0 && (
                       <span className="badge-count">{alerts}</span>
