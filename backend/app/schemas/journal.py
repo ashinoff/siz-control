@@ -55,6 +55,14 @@ class MovementOut(ORMModel):
     comment: Optional[str] = None
 
 
+class MovementPurgeRequest(BaseModel):
+    """Filters for bulk-deleting journal (movement) records by period."""
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+    operation_type: Optional[str] = None
+    department_id: Optional[int] = None
+
+
 class AuditLogOut(ORMModel):
     id: int
     created_at: datetime
