@@ -74,6 +74,7 @@ export const GENDER_OPTIONS = [
   { value: "", label: "— не задан —" },
   { value: "мужской", label: "Мужской" },
   { value: "женский", label: "Женский" },
+  { value: "унисекс", label: "Унисекс" },
 ];
 
 export const EMPLOYEE_STATUS_LABEL = {
