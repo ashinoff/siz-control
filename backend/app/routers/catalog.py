@@ -163,6 +163,7 @@ def delete_subcategory(
 def list_catalog_items(
     item_type: Optional[str] = None,
     category_id: Optional[int] = None,
+    subcategory_id: Optional[int] = None,
     search: Optional[str] = None,
     include_inactive: bool = False,
     db: Session = Depends(get_db),
@@ -175,6 +176,8 @@ def list_catalog_items(
         query = query.filter(CatalogItem.item_type == item_type)
     if category_id is not None:
         query = query.filter(CatalogItem.category_id == category_id)
+    if subcategory_id is not None:
+        query = query.filter(CatalogItem.subcategory_id == subcategory_id)
     if search:
         query = query.filter(CatalogItem.name.ilike(f"%{search}%"))
     return query.order_by(CatalogItem.name).all()

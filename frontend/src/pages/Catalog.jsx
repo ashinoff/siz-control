@@ -268,16 +268,40 @@ function Nomenclature({ type }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [del, setDel] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [subs, setSubs] = useState([]);
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
+
+  // Reset filters when the item type tab changes.
+  useEffect(() => {
+    setCategoryId("");
+    setSubcategoryId("");
+  }, [type]);
+
+  // Load category/subcategory options for the filter selects.
+  useEffect(() => {
+    api.get("/api/catalog/categories", { params: { item_type: type } }).then(({ data }) => setCategories(data));
+    api.get("/api/catalog/subcategories").then(({ data }) => setSubs(data));
+  }, [type]);
+
+  const subOptions = useMemo(
+    () => subs.filter((s) => s.category_id === Number(categoryId)),
+    [subs, categoryId],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/api/catalog/items", { params: { item_type: type } });
+      const params = { item_type: type };
+      if (categoryId) params.category_id = categoryId;
+      if (subcategoryId) params.subcategory_id = subcategoryId;
+      const { data } = await api.get("/api/catalog/items", { params });
       setItems(data);
     } finally {
       setLoading(false);
     }
-  }, [type]);
+  }, [type, categoryId, subcategoryId]);
 
   useEffect(() => {
     load();
@@ -295,10 +319,41 @@ function Nomenclature({ type }) {
 
   return (
     <div>
-      <div className="flex-between" style={{ marginBottom: 12 }}>
-        <span className="text-muted" style={{ fontSize: 13 }}>
-          Позиций: {items.length}
-        </span>
+      <div className="flex-between" style={{ marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span className="text-muted" style={{ fontSize: 13 }}>
+            Позиций: {items.length}
+          </span>
+          <Select
+            value={categoryId}
+            onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId(""); }}
+            style={{ minWidth: 180 }}
+          >
+            <option value="">Все категории</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </Select>
+          <Select
+            value={subcategoryId}
+            onChange={(e) => setSubcategoryId(e.target.value)}
+            disabled={!categoryId}
+            style={{ minWidth: 180 }}
+          >
+            <option value="">Все подкатегории</option>
+            {subOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </Select>
+          {(categoryId || subcategoryId) && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => { setCategoryId(""); setSubcategoryId(""); }}
+            >
+              Сбросить
+            </button>
+          )}
+        </div>
         <button className="btn btn-primary btn-sm" onClick={() => setModal({ item_type: type })}>
           <IconPlus size={16} /> Позиция справочника
         </button>
