@@ -158,7 +158,7 @@ button {
   filter: brightness(0) invert(1); /* solid-blue source → flatten to white */
 }
 .sidebar-brand .logo .rosseti { width: 24px; height: 24px; }
-.login-logo .rosseti { width: 34px; height: 34px; }
+.login-logo .rosseti { width: 42px; height: 42px; }
 
 /* Title / heading — calm baseline glow (also the only effect under reduced motion). */
 .brand-spark { text-shadow: 0 0 5px rgba(127, 219, 255, 0.22); }
@@ -884,17 +884,18 @@ table.data-bordered tbody td {
   max-width: 400px;
   padding: 36px 34px;
 }
+.login-brand { text-align: center; }
 .login-logo {
-  width: 52px;
-  height: 52px;
-  border-radius: 13px;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   background: linear-gradient(135deg, #3b6ea5, #2a4d78);
   display: grid;
   place-items: center;
   color: #fff;
   font-weight: 700;
   font-size: 22px;
-  margin-bottom: 18px;
+  margin: 0 auto 16px;
 }
 .login-card h1 {
   font-size: 22px;
