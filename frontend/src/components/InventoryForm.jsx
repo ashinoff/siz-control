@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Modal, Field, Input, Textarea, Select, Alert } from "./ui.jsx";
-import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS } from "../lib/format.js";
+import { LIFE_UNIT_OPTIONS } from "../lib/format.js";
 
 const empty = {
   catalog_item_id: "",
@@ -32,10 +32,12 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
   const [warehouses, setWarehouses] = useState([]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [categoryId, setCategoryId] = useState(""); // catalog narrowing filter
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setCategoryId("");
     api.get("/api/catalog/items").then(({ data }) => setCatalog(data));
     api.get("/api/departments").then(({ data }) => setDepartments(data));
     api.get("/api/warehouses").then(({ data }) => setWarehouses(data));
@@ -68,18 +70,28 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const catalogFiltered = useMemo(() => {
-    if (isEdit) {
-      // Offer only positions of the same kind as the item being edited.
-      return editItem?.item_type
-        ? catalog.filter((c) => c.item_type === editItem.item_type)
-        : catalog;
+  // The registry kind this form belongs to. Catalog is hard-restricted to it:
+  // СИЗ → ppe, материалы → material, оборудование → equipment (no mixing).
+  const effectiveType = isEdit ? editItem?.item_type : defaultType;
+
+  const catalogByType = useMemo(
+    () => (effectiveType ? catalog.filter((c) => c.item_type === effectiveType) : catalog),
+    [catalog, effectiveType],
+  );
+
+  // Categories present among those positions, for the narrowing filter.
+  const categoryOptions = useMemo(() => {
+    const m = new Map();
+    for (const c of catalogByType) {
+      if (c.category?.id) m.set(c.category.id, c.category.name);
     }
-    if (defaultType === "ppe") return catalog.filter((c) => c.item_type === "ppe");
-    if (defaultType === "equipment")
-      return catalog.filter((c) => c.item_type === "material" || c.item_type === "equipment");
-    return catalog;
-  }, [catalog, defaultType, isEdit, editItem]);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
+  }, [catalogByType]);
+
+  const catalogFiltered = useMemo(
+    () => (categoryId ? catalogByType.filter((c) => c.category_id === Number(categoryId)) : catalogByType),
+    [catalogByType, categoryId],
+  );
 
   const whFiltered = useMemo(() => {
     if (!form.department_owner_id) return warehouses;
@@ -151,6 +163,22 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
       {error && <Alert kind="error">{error}</Alert>}
 
       <div className="form-grid">
+        <Field label="Категория (фильтр)">
+          <Select
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              set("catalog_item_id", "");
+            }}
+          >
+            <option value="">Все категории</option>
+            {categoryOptions.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Позиция справочника" required>
           <Select
             value={form.catalog_item_id}
@@ -159,7 +187,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             <option value="">— выберите —</option>
             {catalogFiltered.map((c) => (
               <option key={c.id} value={c.id}>
-                {ITEM_TYPE_LABEL[c.item_type]}: {c.name}
+                {c.name}
               </option>
             ))}
           </Select>
