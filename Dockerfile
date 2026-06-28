@@ -10,6 +10,14 @@ RUN npm run build
 FROM python:3.11-slim
 WORKDIR /app
 
+# Local timezone so date.today() (used for service-life / verification
+# deadlines) reflects the users' day, not UTC. Override TZ in deployment if
+# you are in another zone. DB timestamps stay UTC (explicit in the models).
+ENV TZ=Europe/Moscow
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

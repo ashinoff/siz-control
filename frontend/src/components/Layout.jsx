@@ -47,6 +47,9 @@ export default function Layout() {
     setMenuOpen(false);
   }, [location.pathname]);
 
+  // Fetch the alert badge once when the shell mounts. The dashboard endpoint
+  // scans all inventory, so re-running it on every navigation was wasteful;
+  // the badge refreshes on reload (or revisit to the dashboard page).
   useEffect(() => {
     let active = true;
     api
@@ -58,7 +61,7 @@ export default function Layout() {
     return () => {
       active = false;
     };
-  }, [location.pathname]);
+  }, []);
 
   const title = TITLES[location.pathname] || "СИЗ Контроль";
   const meta = routeMeta(location.pathname);
