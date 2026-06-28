@@ -15,20 +15,25 @@ function makeBolt(width, height, segments) {
   for (let i = 0; i <= segments; i++) {
     const x = (width / segments) * i;
     const edge = i === 0 || i === segments;
-    const jitter = edge ? height * 0.16 : height * 0.42;
+    const jitter = edge ? height * 0.12 : height * 0.4;
     const y = mid + (Math.random() * 2 - 1) * jitter;
     pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
   }
   return pts.join(" ");
 }
 
-function newBolt(id) {
-  return { id, title: makeBolt(150, 34, 7), arc: makeBolt(32, 32, 5) };
+// Stylised «Россети»-style energy emblem (a lightning flash) for the badge.
+function RosetiMark() {
+  return (
+    <svg className="rosseti" viewBox="0 0 32 32" aria-hidden="true">
+      <polygon points="20,2 9,16 15,16 12,30 23,13 17,13" fill="#fff" />
+    </svg>
+  );
 }
 
 export default function BrandMark() {
   const [flash, setFlash] = useState(false);
-  const [bolt, setBolt] = useState(() => newBolt(0));
+  const [bolt, setBolt] = useState(() => ({ id: 0, path: makeBolt(200, 50, 9) }));
   const timers = useRef([]);
 
   useEffect(() => {
@@ -50,7 +55,7 @@ export default function BrandMark() {
         setTimeout(() => {
           if (cancelled) return;
           n += 1;
-          setBolt(newBolt(n)); // new random lightning path
+          setBolt({ id: n, path: makeBolt(200, 50, 9) }); // new random path
           setFlash(true);
           push(setTimeout(() => !cancelled && setFlash(false), FLASH_DURATION_MS));
           schedule(); // queue the next flash at a fresh random gap
@@ -85,23 +90,17 @@ export default function BrandMark() {
 
   return (
     <div className="sidebar-brand" style={styleVars}>
+      {/* Lightning lives on the background, spanning the whole brand rectangle. */}
+      <svg className="brand-bolt" viewBox="0 0 200 50" preserveAspectRatio="none" aria-hidden="true">
+        {flash && (
+          <polyline key={bolt.id} className="brand-bolt-line" points={bolt.path} fill="none" pathLength="1" />
+        )}
+      </svg>
       <div className={`logo ${cls}`}>
-        <span>СК</span>
-        <svg className="brand-arc" viewBox="0 0 32 32" preserveAspectRatio="none" aria-hidden="true">
-          {flash && (
-            <polyline key={bolt.id} className="brand-arc-line" points={bolt.arc} fill="none" pathLength="1" />
-          )}
-        </svg>
+        <RosetiMark />
       </div>
       <div className="brand-text">
-        <div className="title-wrap">
-          <div className={`title ${cls}`}>СИЗ Контроль</div>
-          <svg className="brand-bolt" viewBox="0 0 150 34" preserveAspectRatio="none" aria-hidden="true">
-            {flash && (
-              <polyline key={bolt.id} className="brand-bolt-line" points={bolt.title} fill="none" pathLength="1" />
-            )}
-          </svg>
-        </div>
+        <div className={`title ${cls}`}>СИЗ Контроль</div>
         <div className="subtitle">Учет и контроль</div>
       </div>
     </div>
