@@ -139,42 +139,34 @@ button {
   font-size: 11px;
 }
 
-/* ── Electric brand effect (energy theme) ──────────────────────────────────
-   Every few seconds a discharge sweeps the WHOLE brand rectangle on the
-   background (behind the Россети badge and the title), while the letters and
-   the badge glow electric-blue. Text stays fully readable (the lightning sits
-   behind everything, никакого сдвига вёрстки); prefers-reduced-motion disables
-   the flashes, leaving only a faint static glow. */
-.sidebar-brand { position: relative; overflow: hidden; }
-.sidebar-brand .brand-text { min-width: 0; position: relative; z-index: 1; }
-.sidebar-brand .logo { position: relative; z-index: 1; }
+/* ── Electric brand effect (energy theme) — shared by sidebar & login ───────
+   Every few seconds a discharge sweeps the WHOLE brand block on the background
+   (behind the Россети badge and the title), while the letters and the badge
+   glow electric-blue. Text stays fully readable (the lightning sits behind
+   everything, никакого сдвига вёрстки); prefers-reduced-motion disables the
+   flashes, leaving only a faint static glow. Colours come from the per-mark
+   CSS vars --brand-core / --brand-arc (light-blue on dark, saturated on light). */
+.brand-flash { position: relative; }
+.brand-flash > * { position: relative; z-index: 1; }
+.brand-flash > .brand-bolt { z-index: 0; }
+.sidebar-brand.brand-flash { overflow: hidden; }
 
 /* Россети emblem, recoloured white to read on the blue badge. */
-.sidebar-brand .logo .rosseti {
-  width: 24px;
-  height: 24px;
+.rosseti {
   display: block;
   object-fit: contain;
-  /* The source mark is solid blue on transparent → flatten to white. */
-  filter: brightness(0) invert(1);
+  filter: brightness(0) invert(1); /* solid-blue source → flatten to white */
 }
-.sidebar-brand .logo.brand-electric.is-flash .rosseti {
-  filter: brightness(0) invert(1) drop-shadow(0 0 4px var(--brand-core));
-}
+.sidebar-brand .logo .rosseti { width: 24px; height: 24px; }
+.login-logo .rosseti { width: 34px; height: 34px; }
 
-/* Calm baseline glow — the only effect when reduced motion is on. */
-.sidebar-brand .title.brand-electric {
-  position: relative;
-  text-shadow: 0 0 5px rgba(127, 219, 255, 0.22);
-}
+/* Title / heading — calm baseline glow (also the only effect under reduced motion). */
+.brand-spark { text-shadow: 0 0 5px rgba(127, 219, 255, 0.22); }
+.brand-spark.is-flash { animation: brand-glow var(--brand-flash, 650ms) ease-out 1; }
+/* Badge — a soft electric glow pulse around the whole mark (filter keeps the
+   badge's resting box-shadow intact, works on dark & light alike). */
+.brand-spark-box.is-flash { animation: brand-box-glow var(--brand-flash, 650ms) ease-out 1; }
 
-/* Brief glow flicker during a flash, then settle back. */
-.sidebar-brand .title.brand-electric.is-flash {
-  animation: brand-glow var(--brand-flash, 650ms) ease-out 1;
-}
-.sidebar-brand .logo.brand-electric.is-flash {
-  animation: brand-logo-glow var(--brand-flash, 650ms) ease-out 1;
-}
 @keyframes brand-glow {
   0%   { text-shadow: 0 0 5px rgba(127, 219, 255, 0.22); }
   10%  { text-shadow: 0 0 6px var(--brand-core), 0 0 12px var(--brand-arc); }
@@ -183,24 +175,23 @@ button {
   50%  { text-shadow: 0 0 5px var(--brand-core), 0 0 10px var(--brand-arc); }
   100% { text-shadow: 0 0 5px rgba(127, 219, 255, 0.22); }
 }
-@keyframes brand-logo-glow {
-  0%   { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
-  18%  { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 12px var(--brand-arc); }
-  36%  { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.30), 0 0 18px var(--brand-core); }
-  100% { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
+@keyframes brand-box-glow {
+  0%   { filter: none; }
+  30%  { filter: drop-shadow(0 0 8px var(--brand-arc)); }
+  60%  { filter: drop-shadow(0 0 13px var(--brand-core)); }
+  100% { filter: none; }
 }
 
 /* Full-width background lightning — never blocks clicks or shifts layout. */
-.sidebar-brand .brand-bolt {
+.brand-bolt {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   overflow: visible;
-  z-index: 0;
 }
-.sidebar-brand .brand-bolt-line {
+.brand-bolt-line {
   stroke: var(--brand-core, #dff6ff);
   stroke-width: 1.4;
   stroke-linejoin: round;
@@ -219,9 +210,9 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-brand .title.brand-electric.is-flash,
-  .sidebar-brand .logo.brand-electric.is-flash { animation: none; }
-  .sidebar-brand .brand-bolt-line { animation: none; opacity: 0; }
+  .brand-spark.is-flash,
+  .brand-spark-box.is-flash { animation: none; }
+  .brand-bolt-line { animation: none; opacity: 0; }
 }
 
 .sidebar-nav {
