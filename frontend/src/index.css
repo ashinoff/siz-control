@@ -693,21 +693,25 @@ table.data-bordered tbody td {
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.toolbar .search {
+/* Search box: icon embedded inside the input. Base rules apply everywhere
+   SearchBox is used (e.g. the ТОН registry); the toolbar adds only sizing. */
+.search {
   position: relative;
-  flex: 1;
-  min-width: 220px;
-  max-width: 380px;
 }
-.toolbar .search input {
+.search input {
   padding-left: 34px;
 }
-.toolbar .search svg {
+.search svg {
   position: absolute;
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-faint);
+}
+.toolbar .search {
+  flex: 1;
+  min-width: 220px;
+  max-width: 380px;
 }
 .toolbar .select {
   width: auto;
