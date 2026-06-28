@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Spinner, EmptyState, Select, SearchBox, Badge, Field, Input } from "../components/ui.jsx";
@@ -12,6 +12,7 @@ export default function Norms() {
   const [normItems, setNormItems] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [loading, setLoading] = useState(false);
   // When set to a norm id, picking a catalog item adds it as an
   // interchangeable alternative ("или") to that requirement instead of
@@ -117,9 +118,21 @@ export default function Norms() {
     ? groups.find((g) => g.members.some((m) => m.id === altTarget))
     : null;
 
+  // Category options derived from the registry items themselves (СИЗ/СИ only),
+  // so the dropdown only lists categories that actually have positions.
+  const categoryOptions = useMemo(() => {
+    const m = new Map();
+    for (const c of catalog) {
+      if (c.item_type !== "ppe" && c.item_type !== "equipment") continue;
+      if (c.category?.id) m.set(c.category.id, c.category.name);
+    }
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
+  }, [catalog]);
+
   const filteredCatalog = catalog.filter((c) => {
     if (normCatalogIds.has(c.id)) return false;
     if (c.item_type !== "ppe" && c.item_type !== "equipment") return false;
+    if (categoryFilter && c.category_id !== Number(categoryFilter)) return false;
     if (search) {
       const s = search.toLowerCase();
       return c.name.toLowerCase().includes(s);
@@ -158,7 +171,13 @@ export default function Norms() {
           <div className="card-header">
             <h3>Реестр СИЗ и СИ</h3>
           </div>
-          <div style={{ padding: "12px 16px 0" }}>
+          <div style={{ padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+            <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+              <option value="">Все категории</option>
+              {categoryOptions.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </Select>
             <SearchBox value={search} onChange={setSearch} placeholder="Поиск по наименованию" />
           </div>
           {altTarget != null && (
