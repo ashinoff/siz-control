@@ -235,10 +235,10 @@ def delete_inventory_item(
     item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Позиция не найдена")
-    if item.status != InventoryStatus.IN_STOCK.value:
+    if item.status not in (InventoryStatus.IN_STOCK.value, InventoryStatus.WRITTEN_OFF.value):
         raise HTTPException(
             status_code=400,
-            detail="Удалить можно только позицию на складе. Сначала верните позицию со сотрудника на склад.",
+            detail="Удалить можно только позицию на складе или списанную. Выданную сначала верните на склад.",
         )
     item.is_active = False  # soft delete
     log_movement(

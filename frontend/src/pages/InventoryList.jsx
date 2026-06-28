@@ -295,10 +295,10 @@ export default function InventoryList({ scope }) {
                             <IconWriteoff size={16} />
                           </button>
                           )}
-                          {isAdmin && it.status === "in_stock" && (
+                          {isAdmin && (it.status === "in_stock" || it.status === "written_off") && (
                           <button
                             className="btn btn-icon btn-ghost"
-                            title="Удалить"
+                            title={it.status === "written_off" ? "Удалить (в «Удалённое»)" : "Удалить"}
                             style={{ color: "var(--red)" }}
                             onClick={() => setToDelete(it)}
                           >
