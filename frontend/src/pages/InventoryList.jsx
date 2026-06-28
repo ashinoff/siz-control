@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { apiError } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, SearchBox, Select, ConfirmDialog } from "../components/ui.jsx";
@@ -128,6 +129,31 @@ export default function InventoryList({ scope }) {
     setEditItem(item);
     setFormOpen(true);
   };
+
+  // Deep-link: /ppe?edit=123 auto-opens that item's edit form. Used by the
+  // DB-integrity check to jump straight to a position that needs fixing.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    const clearParam = () => {
+      searchParams.delete("edit");
+      setSearchParams(searchParams, { replace: true });
+    };
+    const found = items.find((i) => i.id === Number(editId));
+    if (found) {
+      openEdit(found);
+      clearParam();
+    } else if (!loading) {
+      // Orphaned items may be filtered out of the list — fetch directly.
+      api
+        .get(`/api/inventory/${editId}`)
+        .then(({ data }) => openEdit(data))
+        .catch(() => {})
+        .finally(clearParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, loading, searchParams]);
 
   return (
     <div>

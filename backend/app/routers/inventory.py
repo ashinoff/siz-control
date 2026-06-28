@@ -200,6 +200,13 @@ def update_inventory_item(
     data = payload.model_dump(exclude_unset=True)
     if "life_unit" in data and data["life_unit"] is not None:
         data["life_unit"] = data["life_unit"].value
+    # Reassigning the catalog position: validate it exists and keep the
+    # denormalised item_type in sync with the new catalog row.
+    if data.get("catalog_item_id") is not None and data["catalog_item_id"] != item.catalog_item_id:
+        new_cat = db.query(CatalogItem).filter(CatalogItem.id == data["catalog_item_id"]).first()
+        if not new_cat:
+            raise HTTPException(status_code=400, detail="Указанная позиция справочника не найдена")
+        item.item_type = new_cat.item_type
     for k, v in data.items():
         setattr(item, k, v)
     # Keep the end date consistent if life/start changed.

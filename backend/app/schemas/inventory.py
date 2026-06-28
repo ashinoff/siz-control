@@ -36,6 +36,8 @@ class InventoryItemCreate(InventoryItemBase):
 
 
 class InventoryItemUpdate(BaseModel):
+    # Reassigning the catalog position (e.g. when the original was deleted).
+    catalog_item_id: Optional[int] = None
     inventory_number: Optional[str] = None
     serial_number: Optional[str] = None
     brand_model: Optional[str] = None

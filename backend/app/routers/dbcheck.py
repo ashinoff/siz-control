@@ -29,6 +29,17 @@ class Issue(BaseModel):
     message: str
     fix_action: Optional[str] = None
     fix_label: Optional[str] = None
+    # Optional secondary/fallback action (e.g. deactivate when the preferred
+    # fix is to restore something instead).
+    alt_action: Optional[str] = None
+    alt_label: Optional[str] = None
+    # Optional in-app link to fix the issue by editing a card.
+    link: Optional[str] = None
+    link_label: Optional[str] = None
+
+
+# InventoryItem.item_type → list route used for "go fix the card" links.
+_INV_ROUTE = {"ppe": "/ppe", "material": "/materials", "equipment": "/equipment"}
 
 
 class CheckResult(BaseModel):
@@ -101,6 +112,11 @@ def _run_checks(db: Session) -> List[Issue]:
             ))
 
     # ── 4. Inventory referencing deleted catalog items ────────────
+    # Two sub-cases: the catalog row still exists but is soft-deleted (the
+    # common case — fixable by restoring it, which heals every item pointing
+    # to it at once), or the row is truly gone (reassign in the item's card,
+    # or deactivate as a last resort).
+    all_catalog_ids = {c.id for c in db.query(CatalogItem).all()}
     active_catalog_ids = {c.id for c in db.query(CatalogItem).filter(CatalogItem.is_active.is_(True)).all()}
     inv_bad_catalog = (
         db.query(InventoryItem)
@@ -108,14 +124,37 @@ def _run_checks(db: Session) -> List[Issue]:
         .all()
     )
     for item in inv_bad_catalog:
-        if item.catalog_item_id not in active_catalog_ids:
+        if item.catalog_item_id in active_catalog_ids:
+            continue
+        if item.catalog_item_id in all_catalog_ids:
+            # Catalog row exists but deactivated → restore it.
             issues.append(Issue(
                 id=f"inv_bad_catalog_{item.id}",
                 severity="error",
                 category="Удалённая номенклатура",
-                message=f"Позиция #{item.id} ссылается на удалённую/несуществующую позицию каталога {item.catalog_item_id}",
-                fix_action=f"deactivate_item:{item.id}",
-                fix_label="Деактивировать позицию",
+                message=f"Позиция #{item.id} ссылается на деактивированную позицию каталога {item.catalog_item_id}",
+                fix_action=f"reactivate_catalog:{item.catalog_item_id}",
+                fix_label="Восстановить позицию каталога",
+                alt_action=f"deactivate_item:{item.id}",
+                alt_label="Деактивировать позицию",
+                link="/catalog",
+                link_label="В номенклатуру",
+            ))
+        else:
+            # Catalog row is gone for good → reassign in the card or deactivate.
+            route = _INV_ROUTE.get(item.item_type, "/ppe")
+            issues.append(Issue(
+                id=f"inv_bad_catalog_{item.id}",
+                severity="error",
+                category="Удалённая номенклатура",
+                message=(
+                    f"Позиция #{item.id} ссылается на несуществующую позицию каталога "
+                    f"{item.catalog_item_id} — переназначьте её на действующую позицию справочника"
+                ),
+                link=f"{route}?edit={item.id}",
+                link_label="Перейти и исправить",
+                alt_action=f"deactivate_item:{item.id}",
+                alt_label="Деактивировать позицию",
             ))
 
     # ── 5. Open assignments for returned/stock items ─────────────
@@ -266,6 +305,15 @@ def fix_issue(
         item.is_active = False
         db.commit()
         return {"detail": f"Позиция #{item_id} деактивирована"}
+
+    elif action == "reactivate_catalog" and item_id:
+        # item_id here is the catalog item id carried by the action string.
+        cat = db.query(CatalogItem).filter(CatalogItem.id == item_id).first()
+        if not cat:
+            raise HTTPException(404, "Позиция каталога не найдена")
+        cat.is_active = True
+        db.commit()
+        return {"detail": f"Позиция каталога «{cat.name}» восстановлена"}
 
     elif action == "close_assignment" and item_id:
         asn = db.query(Assignment).filter(Assignment.id == item_id).first()

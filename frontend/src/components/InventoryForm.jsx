@@ -69,12 +69,17 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const catalogFiltered = useMemo(() => {
-    if (isEdit) return catalog;
+    if (isEdit) {
+      // Offer only positions of the same kind as the item being edited.
+      return editItem?.item_type
+        ? catalog.filter((c) => c.item_type === editItem.item_type)
+        : catalog;
+    }
     if (defaultType === "ppe") return catalog.filter((c) => c.item_type === "ppe");
     if (defaultType === "equipment")
       return catalog.filter((c) => c.item_type === "material" || c.item_type === "equipment");
     return catalog;
-  }, [catalog, defaultType, isEdit]);
+  }, [catalog, defaultType, isEdit, editItem]);
 
   const whFiltered = useMemo(() => {
     if (!form.department_owner_id) return warehouses;
@@ -88,6 +93,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     setBusy(true);
     try {
       const payload = {
+        catalog_item_id: form.catalog_item_id ? Number(form.catalog_item_id) : null,
         inventory_number: form.inventory_number || null,
         serial_number: form.serial_number || null,
         brand_model: form.brand_model || null,
@@ -123,9 +129,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     }
   };
 
-  const canSubmit = isEdit
-    ? true
-    : form.catalog_item_id && form.department_owner_id;
+  const canSubmit = form.catalog_item_id && (isEdit || form.department_owner_id);
 
   return (
     <Modal
@@ -147,26 +151,19 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
       {error && <Alert kind="error">{error}</Alert>}
 
       <div className="form-grid">
-        {!isEdit && (
-          <Field label="Позиция справочника" required>
-            <Select
-              value={form.catalog_item_id}
-              onChange={(e) => set("catalog_item_id", e.target.value)}
-            >
-              <option value="">— выберите —</option>
-              {catalogFiltered.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {ITEM_TYPE_LABEL[c.item_type]}: {c.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        )}
-        {isEdit && (
-          <Field label="Позиция справочника">
-            <Input value={editItem.catalog_item?.name || ""} disabled />
-          </Field>
-        )}
+        <Field label="Позиция справочника" required>
+          <Select
+            value={form.catalog_item_id}
+            onChange={(e) => set("catalog_item_id", e.target.value)}
+          >
+            <option value="">— выберите —</option>
+            {catalogFiltered.map((c) => (
+              <option key={c.id} value={c.id}>
+                {ITEM_TYPE_LABEL[c.item_type]}: {c.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         {!isEdit ? (
           <Field label="Подразделение-владелец" required>

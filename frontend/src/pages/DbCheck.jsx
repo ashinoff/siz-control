@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import api, { apiError } from "../api/client.js";
 import { Alert, Badge, Spinner, EmptyState } from "../components/ui.jsx";
 import { IconCheckShield, IconAlert } from "../components/icons.jsx";
@@ -86,7 +87,7 @@ export default function DbCheck() {
                       <th>Тип</th>
                       <th>Категория</th>
                       <th>Описание</th>
-                      <th style={{ width: 180 }}>Действие</th>
+                      <th style={{ width: 230 }}>Действие</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -100,18 +101,40 @@ export default function DbCheck() {
                         <td className="cell-strong" style={{ fontSize: 12 }}>{issue.category}</td>
                         <td style={{ fontSize: 12 }}>{issue.message}</td>
                         <td>
-                          {issue.fix_action ? (
-                            <button
-                              className="btn btn-sm btn-secondary"
-                              disabled={fixing === issue.fix_action}
-                              onClick={() => doFix(issue.fix_action)}
-                              style={{ fontSize: 11 }}
-                            >
-                              {fixing === issue.fix_action ? "..." : issue.fix_label}
-                            </button>
-                          ) : (
-                            <span className="muted" style={{ fontSize: 11 }}>Ручное исправление</span>
-                          )}
+                          <div className="btn-row" style={{ flexWrap: "wrap", gap: 6 }}>
+                            {issue.fix_action && (
+                              <button
+                                className="btn btn-sm btn-primary"
+                                disabled={fixing === issue.fix_action}
+                                onClick={() => doFix(issue.fix_action)}
+                                style={{ fontSize: 11 }}
+                              >
+                                {fixing === issue.fix_action ? "..." : issue.fix_label}
+                              </button>
+                            )}
+                            {issue.link && (
+                              <Link
+                                className="btn btn-sm btn-secondary"
+                                to={issue.link}
+                                style={{ fontSize: 11 }}
+                              >
+                                {issue.link_label || "Перейти"}
+                              </Link>
+                            )}
+                            {issue.alt_action && (
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                disabled={fixing === issue.alt_action}
+                                onClick={() => doFix(issue.alt_action)}
+                                style={{ fontSize: 11, color: "var(--red)" }}
+                              >
+                                {fixing === issue.alt_action ? "..." : issue.alt_label}
+                              </button>
+                            )}
+                            {!issue.fix_action && !issue.link && !issue.alt_action && (
+                              <span className="muted" style={{ fontSize: 11 }}>Ручное исправление</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
