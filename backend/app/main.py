@@ -34,6 +34,7 @@ from .routers import (
     norms,
     operations,
     reports,
+    trash,
     users,
 )
 
@@ -163,6 +164,7 @@ app.include_router(norms.router)
 app.include_router(importdata.router)
 app.include_router(import_issued.router)
 app.include_router(dbcheck.router)
+app.include_router(trash.router)
 
 
 # Serve frontend static build -----------------------------------------------

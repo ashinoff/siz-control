@@ -25,6 +25,7 @@ import Import from "./pages/Import.jsx";
 import ImportIssued from "./pages/ImportIssued.jsx";
 import Backup from "./pages/Backup.jsx";
 import DbCheck from "./pages/DbCheck.jsx";
+import Trash from "./pages/Trash.jsx";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -116,6 +117,14 @@ export default function App() {
           element={
             <RoleGuard allow={["admin"]}>
               <DbCheck />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/trash"
+          element={
+            <RoleGuard allow={["admin"]}>
+              <Trash />
             </RoleGuard>
           }
         />

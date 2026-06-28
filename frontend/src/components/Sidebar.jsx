@@ -22,6 +22,7 @@ import {
   IconUpload,
   IconDatabase,
   IconWriteoff,
+  IconTrash,
 } from "./icons.jsx";
 
 const SECTIONS = [
@@ -71,6 +72,7 @@ const SECTIONS = [
       { to: "/import", icon: IconUpload, label: "Импорт позиций", admin: true },
       { to: "/import-issued", icon: IconUpload, label: "Импорт выданного", admin: true },
       { to: "/dbcheck", icon: IconCheckShield, label: "Проверка базы", admin: true },
+      { to: "/trash", icon: IconTrash, label: "Удалённое", admin: true },
       { to: "/backup", icon: IconDatabase, label: "Бэкап базы", admin: true },
       { to: "/users", icon: IconShieldUser, label: "Пользователи", admin: true },
     ],
