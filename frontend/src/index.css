@@ -149,10 +149,17 @@ button {
 .sidebar-brand .brand-text { min-width: 0; position: relative; z-index: 1; }
 .sidebar-brand .logo { position: relative; z-index: 1; }
 
-/* Россети-style badge emblem. */
-.sidebar-brand .logo .rosseti { width: 22px; height: 22px; display: block; }
+/* Россети emblem, recoloured white to read on the blue badge. */
+.sidebar-brand .logo .rosseti {
+  width: 24px;
+  height: 24px;
+  display: block;
+  object-fit: contain;
+  /* The source mark is solid blue on transparent → flatten to white. */
+  filter: brightness(0) invert(1);
+}
 .sidebar-brand .logo.brand-electric.is-flash .rosseti {
-  filter: drop-shadow(0 0 4px var(--brand-core));
+  filter: brightness(0) invert(1) drop-shadow(0 0 4px var(--brand-core));
 }
 
 /* Calm baseline glow — the only effect when reduced motion is on. */

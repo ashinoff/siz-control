@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import rosetiLogo from "../assets/rosseti.svg";
 
 // ── Tunables (частота / длительность / яркость вспышки) ───────────────────
 const FLASH_GAP_MIN_MS = 5000; // минимальная пауза между вспышками
@@ -22,13 +23,9 @@ function makeBolt(width, height, segments) {
   return pts.join(" ");
 }
 
-// Stylised «Россети»-style energy emblem (a lightning flash) for the badge.
+// Россети emblem for the badge (recoloured white via CSS to sit on the blue).
 function RosetiMark() {
-  return (
-    <svg className="rosseti" viewBox="0 0 32 32" aria-hidden="true">
-      <polygon points="20,2 9,16 15,16 12,30 23,13 17,13" fill="#fff" />
-    </svg>
-  );
+  return <img className="rosseti" src={rosetiLogo} alt="Россети" draggable="false" />;
 }
 
 export default function BrandMark() {
