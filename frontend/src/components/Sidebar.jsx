@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import BrandMark from "./BrandMark.jsx";
 import {
   IconDashboard,
   IconShield,
@@ -92,13 +93,7 @@ export default function Sidebar({ open, alerts = 0, onNavigate }) {
 
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
-      <div className="sidebar-brand">
-        <div className="logo">СК</div>
-        <div>
-          <div className="title">СИЗ Контроль</div>
-          <div className="subtitle">Учет и контроль</div>
-        </div>
-      </div>
+      <BrandMark />
       <nav className="sidebar-nav">
         {SECTIONS.map((section) => {
           const items = section.items.filter(visible);
