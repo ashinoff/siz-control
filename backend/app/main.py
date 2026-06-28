@@ -80,7 +80,10 @@ def _wait_for_db(max_attempts: int = 15, delay_seconds: float = 3.0) -> None:
                 conn.execute(text("SELECT 1"))
             logger.info("Database connection established (attempt %d/%d).", attempt, max_attempts)
             return
-        except SQLAlchemyError as exc:  # connection/DNS/auth errors surface here
+        except (SQLAlchemyError, OSError) as exc:  # connection/DNS/auth errors surface here
+            # OSError catches a bare socket.gaierror ("Temporary failure in name
+            # resolution") in the rare case the driver hasn't wrapped it in a
+            # SQLAlchemyError yet — exactly the Amvera DNS race we retry for.
             last_error = exc
             if attempt < max_attempts:
                 logger.warning(
