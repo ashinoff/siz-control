@@ -5,6 +5,11 @@ import { Spinner, EmptyState, Select, SearchBox, Badge, Field, Input } from "../
 import { IconPlus, IconTrash, IconShield, IconX } from "../components/icons.jsx";
 import PageHeading from "../components/PageHeading.jsx";
 
+// Item types that may be added to a position norm (ТОН), with their short
+// registry-badge labels (СИ = средства измерения, not "оборудование" here).
+const NORM_ITEM_TYPES = ["ppe", "equipment", "material"];
+const NORM_TYPE_BADGE = { ppe: "СИЗ", equipment: "СИ", material: "Материал" };
+
 export default function Norms() {
   const { isPrivileged } = useAuth();
   const [positions, setPositions] = useState([]);
@@ -123,7 +128,7 @@ export default function Norms() {
   const categoryOptions = useMemo(() => {
     const m = new Map();
     for (const c of catalog) {
-      if (c.item_type !== "ppe" && c.item_type !== "equipment") continue;
+      if (!NORM_ITEM_TYPES.includes(c.item_type)) continue;
       if (c.category?.id) m.set(c.category.id, c.category.name);
     }
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
@@ -131,7 +136,7 @@ export default function Norms() {
 
   const filteredCatalog = catalog.filter((c) => {
     if (normCatalogIds.has(c.id)) return false;
-    if (c.item_type !== "ppe" && c.item_type !== "equipment") return false;
+    if (!NORM_ITEM_TYPES.includes(c.item_type)) return false;
     if (categoryFilter && c.category_id !== Number(categoryFilter)) return false;
     if (search) {
       const s = search.toLowerCase();
@@ -145,7 +150,7 @@ export default function Norms() {
       <div className="page-header">
         <div>
           <PageHeading>ТОН — Типовые отраслевые нормы</PageHeading>
-          <div className="subtitle">Обязательные СИЗ и СИ для каждой должности</div>
+          <div className="subtitle">Обязательные СИЗ, СИ и материалы для каждой должности</div>
         </div>
       </div>
 
@@ -169,7 +174,7 @@ export default function Norms() {
         {/* Left: catalog */}
         <div className="card">
           <div className="card-header">
-            <h3>Реестр СИЗ и СИ</h3>
+            <h3>Реестр СИЗ, СИ и материалов</h3>
           </div>
           <div style={{ padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: 8 }}>
             <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
@@ -222,7 +227,7 @@ export default function Norms() {
                       <td className="cell-strong">{c.name}</td>
                       <td>
                         <Badge kind="badge-gray" dot={false}>
-                          {c.item_type === "ppe" ? "СИЗ" : "СИ"}
+                          {NORM_TYPE_BADGE[c.item_type] || c.item_type}
                         </Badge>
                       </td>
                       {isPrivileged && (
