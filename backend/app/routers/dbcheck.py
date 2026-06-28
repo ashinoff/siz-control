@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
 from ..dependencies import require_admin
 from ..enums import InventoryStatus
-from ..models.catalog import CatalogItem
+from ..models.catalog import CatalogItem, Category, Subcategory
 from ..models.inventory import InventoryItem
-from ..models.journal import Assignment
+from ..models.journal import Assignment, VerificationRecord
+from ..models.norms import PositionNorm
 from ..models.organization import Department, Employee, Warehouse
 from ..models.user import User
 from ..services import status as status_service
@@ -248,6 +249,104 @@ def _run_checks(db: Session) -> List[Issue]:
             link_label="Открыть карточку",
         ))
 
+    # ── 9. Orphaned assignments (referenced item no longer exists) ─
+    all_item_ids = {r[0] for r in db.query(InventoryItem.id).all()}
+    for asn in db.query(Assignment).all():
+        if asn.inventory_item_id not in all_item_ids:
+            issues.append(Issue(
+                id=f"orphan_assignment_{asn.id}",
+                severity="warning",
+                category="Осиротевшая выдача",
+                message=f"Запись выдачи #{asn.id} ссылается на несуществующую позицию учёта {asn.inventory_item_id}",
+                fix_action=f"delete_assignment:{asn.id}",
+                fix_label="Удалить запись выдачи",
+            ))
+
+    # ── 10. Orphaned verification records ────────────────────────
+    for vr in db.query(VerificationRecord).all():
+        if vr.inventory_item_id not in all_item_ids:
+            issues.append(Issue(
+                id=f"orphan_verif_{vr.id}",
+                severity="warning",
+                category="Осиротевшая поверка",
+                message=f"Запись поверки #{vr.id} ссылается на несуществующую позицию учёта {vr.inventory_item_id}",
+                fix_action=f"delete_verification:{vr.id}",
+                fix_label="Удалить запись поверки",
+            ))
+
+    # ── 11. Norms referencing deleted catalog ────────────────────
+    # active_catalog_ids / all_catalog_ids were computed in check 4.
+    for norm in db.query(PositionNorm).all():
+        if norm.catalog_item_id in active_catalog_ids:
+            continue
+        if norm.catalog_item_id in all_catalog_ids:
+            issues.append(Issue(
+                id=f"norm_bad_catalog_{norm.id}",
+                severity="warning",
+                category="Норма на удалённую номенклатуру",
+                message=f"Норма ТОН #{norm.id} ({norm.position}) ссылается на деактивированную позицию каталога {norm.catalog_item_id}",
+                fix_action=f"reactivate_catalog:{norm.catalog_item_id}",
+                fix_label="Восстановить позицию каталога",
+                alt_action=f"delete_norm:{norm.id}",
+                alt_label="Удалить из норматива",
+                link="/norms",
+                link_label="К нормам",
+            ))
+        else:
+            issues.append(Issue(
+                id=f"norm_bad_catalog_{norm.id}",
+                severity="error",
+                category="Норма на удалённую номенклатуру",
+                message=f"Норма ТОН #{norm.id} ({norm.position}) ссылается на несуществующую позицию каталога {norm.catalog_item_id}",
+                fix_action=f"delete_norm:{norm.id}",
+                fix_label="Удалить из норматива",
+                link="/norms",
+                link_label="К нормам",
+            ))
+
+    # ── 12. Subcategories whose category no longer exists ────────
+    all_category_ids = {r[0] for r in db.query(Category.id).all()}
+    for sub in db.query(Subcategory).filter(Subcategory.is_active.is_(True)).all():
+        if sub.category_id not in all_category_ids:
+            issues.append(Issue(
+                id=f"sub_bad_category_{sub.id}",
+                severity="error",
+                category="Подкатегория без категории",
+                message=f"Подкатегория «{sub.name}» (ID {sub.id}) привязана к несуществующей категории {sub.category_id}",
+                fix_action=f"deactivate_subcategory:{sub.id}",
+                fix_label="Деактивировать подкатегорию",
+                link="/catalog",
+                link_label="К справочникам",
+            ))
+
+    # ── 13. Warehouses whose department no longer exists ─────────
+    all_dept_ids_any = {r[0] for r in db.query(Department.id).all()}
+    for wh in db.query(Warehouse).filter(Warehouse.is_active.is_(True)).all():
+        if wh.department_id not in all_dept_ids_any:
+            issues.append(Issue(
+                id=f"wh_bad_dept_{wh.id}",
+                severity="error",
+                category="Склад без подразделения",
+                message=f"Склад «{wh.name}» (ID {wh.id}) привязан к несуществующему подразделению {wh.department_id}",
+                fix_action=f"deactivate_warehouse:{wh.id}",
+                fix_label="Деактивировать склад",
+            ))
+
+    # ── 14. Junk in the trash bin that can be purged ─────────────
+    trash_total = sum(
+        db.query(model).filter(model.is_active.is_(False)).count()
+        for model in (InventoryItem, CatalogItem, Category, Subcategory, Employee, Department, Warehouse, User)
+    )
+    if trash_total:
+        issues.append(Issue(
+            id="trash_pending",
+            severity="warning",
+            category="Корзина",
+            message=f"В корзине {trash_total} удалённых записей — просмотрите и при необходимости удалите навсегда",
+            link="/trash",
+            link_label="В корзину",
+        ))
+
     return issues
 
 
@@ -334,6 +433,46 @@ def fix_issue(
         cat.is_active = True
         db.commit()
         return {"detail": f"Позиция каталога «{cat.name}» восстановлена"}
+
+    elif action == "delete_assignment" and item_id:
+        asn = db.query(Assignment).filter(Assignment.id == item_id).first()
+        if not asn:
+            raise HTTPException(404, "Запись выдачи не найдена")
+        db.delete(asn)
+        db.commit()
+        return {"detail": f"Запись выдачи #{item_id} удалена"}
+
+    elif action == "delete_verification" and item_id:
+        vr = db.query(VerificationRecord).filter(VerificationRecord.id == item_id).first()
+        if not vr:
+            raise HTTPException(404, "Запись поверки не найдена")
+        db.delete(vr)
+        db.commit()
+        return {"detail": f"Запись поверки #{item_id} удалена"}
+
+    elif action == "delete_norm" and item_id:
+        norm = db.query(PositionNorm).filter(PositionNorm.id == item_id).first()
+        if not norm:
+            raise HTTPException(404, "Позиция норматива не найдена")
+        db.delete(norm)
+        db.commit()
+        return {"detail": f"Позиция норматива #{item_id} удалена"}
+
+    elif action == "deactivate_subcategory" and item_id:
+        sub = db.query(Subcategory).filter(Subcategory.id == item_id).first()
+        if not sub:
+            raise HTTPException(404, "Подкатегория не найдена")
+        sub.is_active = False
+        db.commit()
+        return {"detail": f"Подкатегория «{sub.name}» деактивирована"}
+
+    elif action == "deactivate_warehouse" and item_id:
+        wh = db.query(Warehouse).filter(Warehouse.id == item_id).first()
+        if not wh:
+            raise HTTPException(404, "Склад не найден")
+        wh.is_active = False
+        db.commit()
+        return {"detail": f"Склад «{wh.name}» деактивирован"}
 
     elif action == "close_assignment" and item_id:
         asn = db.query(Assignment).filter(Assignment.id == item_id).first()
