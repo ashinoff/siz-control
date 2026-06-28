@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { apiError } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, SearchBox, Select, Modal, Field, Input, Textarea, Alert, ConfirmDialog } from "../components/ui.jsx";
@@ -68,6 +69,19 @@ export default function Employees() {
     setEditEmp({ ...emptyEmp, ...e, department_id: e.department_id });
     setModalOpen(true);
   };
+
+  // Deep-link: /employees?edit=123 auto-opens that employee's edit form.
+  // Used by the DB-integrity check to jump straight to a record to fix.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || loading) return;
+    const emp = list.find((x) => x.id === Number(editId));
+    if (emp) openEdit(emp);
+    searchParams.delete("edit");
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, loading, searchParams]);
 
   const doDelete = async () => {
     try {

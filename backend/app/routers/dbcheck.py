@@ -42,6 +42,11 @@ class Issue(BaseModel):
 _INV_ROUTE = {"ppe": "/ppe", "material": "/materials", "equipment": "/equipment"}
 
 
+def _inv_card_link(item: InventoryItem) -> str:
+    """Deep link that opens this inventory item's edit card."""
+    return f"{_INV_ROUTE.get(item.item_type, '/ppe')}?edit={item.id}"
+
+
 class CheckResult(BaseModel):
     total_issues: int
     errors: int
@@ -71,6 +76,8 @@ def _run_checks(db: Session) -> List[Issue]:
             message=f"Позиция #{item.id} «{item.inventory_number or '—'}» имеет статус 'Выдано', но сотрудник не указан",
             fix_action=f"return_to_stock:{item.id}",
             fix_label="Вернуть на склад",
+            link=_inv_card_link(item),
+            link_label="Открыть карточку",
         ))
 
     # ── 2. In-stock items without warehouse ──────────────────────
@@ -91,6 +98,8 @@ def _run_checks(db: Session) -> List[Issue]:
             message=f"Позиция #{item.id} «{item.inventory_number or '—'}» на складе, но склад не указан",
             fix_action=f"assign_warehouse:{item.id}",
             fix_label="Назначить склад по умолчанию",
+            link=_inv_card_link(item),
+            link_label="Открыть карточку",
         ))
 
     # ── 3. Employees without valid department ────────────────────
@@ -106,9 +115,14 @@ def _run_checks(db: Session) -> List[Issue]:
                 id=f"emp_bad_dept_{emp.id}",
                 severity="error",
                 category="Сотрудник без подразделения",
-                message=f"Сотрудник «{emp.full_name}» (ID {emp.id}) привязан к несуществующему подразделению {emp.department_id}",
-                fix_action=f"deactivate_employee:{emp.id}",
-                fix_label="Деактивировать сотрудника",
+                message=(
+                    f"Сотрудник «{emp.full_name}» (ID {emp.id}) привязан к несуществующему "
+                    f"подразделению {emp.department_id} — назначьте действующее подразделение"
+                ),
+                link=f"/employees?edit={emp.id}",
+                link_label="Перейти и исправить",
+                alt_action=f"deactivate_employee:{emp.id}",
+                alt_label="Деактивировать сотрудника",
             ))
 
     # ── 4. Inventory referencing deleted catalog items ────────────
@@ -173,6 +187,8 @@ def _run_checks(db: Session) -> List[Issue]:
                 message=f"Выдача #{asn.id} не закрыта (нет даты возврата), но позиция #{item.id} уже не 'Выдано' (статус: {item.status})",
                 fix_action=f"close_assignment:{asn.id}",
                 fix_label="Закрыть выдачу текущей датой",
+                link=_inv_card_link(item),
+                link_label="Открыть карточку",
             ))
 
     # ── 6. Missing service dates ─────────────────────────────────
@@ -193,6 +209,8 @@ def _run_checks(db: Session) -> List[Issue]:
             message=f"Позиция #{item.id} «{item.inventory_number or '—'}» выдана, но дата начала эксплуатации не задана",
             fix_action=f"set_start_date:{item.id}",
             fix_label="Установить дату выдачи как начало",
+            link=_inv_card_link(item),
+            link_label="Открыть карточку",
         ))
 
     # ── 7. Duplicate inventory numbers within same department ────
@@ -226,6 +244,8 @@ def _run_checks(db: Session) -> List[Issue]:
             message=f"Позиция #{item.id} «{item.inventory_number or '—'}» имеет количество {item.quantity}",
             fix_action=f"set_qty_one:{item.id}",
             fix_label="Установить количество = 1",
+            link=_inv_card_link(item),
+            link_label="Открыть карточку",
         ))
 
     return issues
