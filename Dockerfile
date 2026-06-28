@@ -28,6 +28,11 @@ COPY backend/ ./backend/
 # Copy frontend build from stage 1
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 
+# Regulatory-act PDFs (Нормативные акты) live in docs/ at the repo root and are
+# served at runtime. Must be inside the image, at /app/docs (one level above
+# backend/), matching DOCS_DIR in routers/documents.py.
+COPY docs/ ./docs/
+
 WORKDIR /app/backend
 
 EXPOSE 8000

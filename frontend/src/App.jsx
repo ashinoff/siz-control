@@ -26,6 +26,7 @@ import ImportIssued from "./pages/ImportIssued.jsx";
 import Backup from "./pages/Backup.jsx";
 import DbCheck from "./pages/DbCheck.jsx";
 import Trash from "./pages/Trash.jsx";
+import Documents from "./pages/Documents.jsx";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="/deadlines" element={<DeadlineControl />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/journal" element={<Journal />} />
+        <Route path="/documents" element={<Documents />} />
         <Route
           path="/catalog"
           element={

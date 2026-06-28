@@ -64,6 +64,7 @@ const SECTIONS = [
       { to: "/deadlines", icon: IconClock, label: "Контроль сроков", alertKey: true, neon: true },
       { to: "/reports", icon: IconReport, label: "Отчеты" },
       { to: "/journal", icon: IconList, label: "Журнал действий" },
+      { to: "/documents", icon: IconBook, label: "Нормативные акты" },
     ],
   },
   {

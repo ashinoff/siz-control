@@ -25,6 +25,7 @@ from .routers import (
     dashboard,
     dbcheck,
     departments,
+    documents,
     employees,
     export,
     import_issued,
@@ -165,6 +166,7 @@ app.include_router(importdata.router)
 app.include_router(import_issued.router)
 app.include_router(dbcheck.router)
 app.include_router(trash.router)
+app.include_router(documents.router)
 
 
 # Serve frontend static build -----------------------------------------------
