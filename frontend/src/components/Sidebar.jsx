@@ -33,6 +33,7 @@ const SECTIONS = [
   {
     label: "Учет",
     items: [
+      { to: "/all", icon: IconList, label: "Всё" },
       { to: "/ppe", icon: IconShield, label: "СИЗ" },
       { to: "/materials", icon: IconBox, label: "Материалы" },
       { to: "/equipment", icon: IconGear, label: "Оборудование" },

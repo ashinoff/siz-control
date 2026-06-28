@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Modal, Field, Input, Textarea, Select, Alert } from "./ui.jsx";
-import { LIFE_UNIT_OPTIONS } from "../lib/format.js";
+import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS } from "../lib/format.js";
 
 const empty = {
   catalog_item_id: "",
@@ -72,7 +72,10 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
 
   // The registry kind this form belongs to. Catalog is hard-restricted to it:
   // СИЗ → ppe, материалы → material, оборудование → equipment (no mixing).
-  const effectiveType = isEdit ? editItem?.item_type : defaultType;
+  // The combined "all" view imposes no restriction.
+  const KNOWN_TYPES = ["ppe", "material", "equipment"];
+  const rawType = isEdit ? editItem?.item_type : defaultType;
+  const effectiveType = KNOWN_TYPES.includes(rawType) ? rawType : null;
 
   const catalogByType = useMemo(
     () => (effectiveType ? catalog.filter((c) => c.item_type === effectiveType) : catalog),
@@ -187,7 +190,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             <option value="">— выберите —</option>
             {catalogFiltered.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {effectiveType ? c.name : `${ITEM_TYPE_LABEL[c.item_type]}: ${c.name}`}
               </option>
             ))}
           </Select>

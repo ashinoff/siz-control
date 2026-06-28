@@ -93,10 +93,10 @@ export default function Dashboard() {
 
       <div className="stat-grid">
         <Stat
-          label="Всего позиций"
+          label="Всего единиц"
           value={stats.total_items}
           icon={<IconBox size={15} />}
-          onClick={() => navigate("/ppe")}
+          onClick={() => navigate("/all")}
         />
         <Stat
           label="На складе"
@@ -148,7 +148,7 @@ export default function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 }}>
         <div className="card">
           <div className="card-header">
-            <h3>Позиции по типу</h3>
+            <h3>Единицы по типу</h3>
           </div>
           <div className="card-pad" style={{ height: 260 }}>
             {typeData.length ? (
@@ -160,7 +160,7 @@ export default function Dashboard() {
                     cursor={{ fill: "rgba(37,99,168,0.06)" }}
                     contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
                   />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]} name="Позиций">
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} name="Единиц">
                     {typeData.map((d) => (
                       <Cell key={d.key} fill={TYPE_COLORS[d.key] || "#2563a8"} />
                     ))}

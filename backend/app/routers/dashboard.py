@@ -63,47 +63,50 @@ def dashboard(
     by_department_counts: dict = defaultdict(lambda: defaultdict(int))
 
     for item in items:
-        stats["total_items"] += 1
-        by_type[item.item_type] += 1
+        # Counts are in physical units (a stock row may hold many), so a row of
+        # 23 laptops counts as 23, not 1.
+        qty = item.quantity or 1
+        stats["total_items"] += qty
+        by_type[item.item_type] += qty
 
         if item.status == InventoryStatus.IN_STOCK.value:
-            stats["in_warehouse"] += 1
+            stats["in_warehouse"] += qty
         elif item.status == InventoryStatus.ISSUED.value:
-            stats["issued"] += 1
+            stats["issued"] += qty
         elif item.status == InventoryStatus.TO_WRITEOFF.value:
-            stats["to_writeoff"] += 1
+            stats["to_writeoff"] += qty
 
         d_status = status_service.deadline_status(item, today)
         if d_status == DeadlineStatus.IN_DATE:
-            stats["in_date"] += 1
+            stats["in_date"] += qty
         elif d_status == DeadlineStatus.EXPIRING:
-            stats["expiring_soon"] += 1
+            stats["expiring_soon"] += qty
         elif d_status == DeadlineStatus.EXPIRED:
-            stats["expired"] += 1
+            stats["expired"] += qty
 
         v_status = status_service.verification_status(item, today)
         if v_status == VerificationStatus.EXPIRING:
-            stats["verification_expiring"] += 1
+            stats["verification_expiring"] += qty
         elif v_status == VerificationStatus.EXPIRED:
-            stats["verification_expired"] += 1
+            stats["verification_expired"] += qty
 
-        # Count unique items that have at least one problem.
+        # Count units that have at least one problem.
         has_problem = d_status in (DeadlineStatus.EXPIRING, DeadlineStatus.EXPIRED) or \
                       v_status in (VerificationStatus.EXPIRING, VerificationStatus.EXPIRED)
         if has_problem:
-            stats["alert_items"] += 1
+            stats["alert_items"] += qty
 
         # Per-department breakdown.
         dept_bucket = by_department_counts[item.department_owner_id]
-        dept_bucket["total"] += 1
+        dept_bucket["total"] += qty
         if item.status == InventoryStatus.IN_STOCK.value:
-            dept_bucket["in_warehouse"] = dept_bucket.get("in_warehouse", 0) + 1
+            dept_bucket["in_warehouse"] = dept_bucket.get("in_warehouse", 0) + qty
         elif item.status == InventoryStatus.ISSUED.value:
-            dept_bucket["issued"] = dept_bucket.get("issued", 0) + 1
+            dept_bucket["issued"] = dept_bucket.get("issued", 0) + qty
         if d_status == DeadlineStatus.EXPIRED:
-            dept_bucket["expired"] += 1
+            dept_bucket["expired"] += qty
         if v_status == VerificationStatus.EXPIRED:
-            dept_bucket["verification_expired"] += 1
+            dept_bucket["verification_expired"] += qty
 
     # Resolve department names for the breakdown.
     dept_names = {

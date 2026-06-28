@@ -23,7 +23,15 @@ const CONFIG = {
   ppe: { title: "Средства индивидуальной защиты", types: ["ppe"], itemType: "ppe" },
   material: { title: "Материалы", types: ["material"], itemType: "material" },
   equipment: { title: "Оборудование", types: ["equipment"], itemType: "equipment" },
+  all: { title: "Все позиции", types: ["ppe", "material", "equipment"], itemType: null },
 };
+
+const TYPE_FILTER_OPTIONS = [
+  { value: "", label: "Все типы" },
+  { value: "ppe", label: "СИЗ" },
+  { value: "material", label: "Материалы" },
+  { value: "equipment", label: "Оборудование" },
+];
 
 export default function InventoryList({ scope }) {
   const cfg = CONFIG[scope];
@@ -39,6 +47,7 @@ export default function InventoryList({ scope }) {
   const [statusF, setStatusF] = useState("");
   const [deadlineF, setDeadlineF] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [typeF, setTypeF] = useState(""); // item type filter, only for the "all" view
 
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -51,7 +60,8 @@ export default function InventoryList({ scope }) {
     setLoading(true);
     try {
       const params = {};
-      if (cfg.itemType) params.item_type = cfg.itemType;
+      const itemType = cfg.itemType || typeF; // fixed type, or the chosen filter in "all"
+      if (itemType) params.item_type = itemType;
       if (search) params.search = search;
       if (categoryId) params.category_id = categoryId;
       if (statusF) params.status = statusF;
@@ -63,7 +73,7 @@ export default function InventoryList({ scope }) {
     } finally {
       setLoading(false);
     }
-  }, [cfg.itemType, search, categoryId, statusF, deadlineF, departmentId, cfg.types]);
+  }, [cfg.itemType, search, categoryId, statusF, deadlineF, departmentId, typeF, cfg.types]);
 
   useEffect(() => {
     load();
@@ -176,6 +186,15 @@ export default function InventoryList({ scope }) {
 
       <div className="toolbar">
         <SearchBox value={search} onChange={setSearch} placeholder="Наименование, инв. или серийный №" />
+        {scope === "all" && (
+          <Select value={typeF} onChange={(e) => setTypeF(e.target.value)}>
+            {TYPE_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        )}
         <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
           <option value="">Все категории</option>
           {categories.map((c) => (

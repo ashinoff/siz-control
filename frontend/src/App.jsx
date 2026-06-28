@@ -59,6 +59,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route path="/all" element={<InventoryList key="all" scope="all" />} />
         <Route path="/ppe" element={<InventoryList key="ppe" scope="ppe" />} />
         <Route path="/materials" element={<InventoryList key="material" scope="material" />} />
         <Route path="/equipment" element={<InventoryList key="equipment" scope="equipment" />} />
