@@ -12,6 +12,53 @@ function pctBadge(pct) {
   return "badge-red";
 }
 
+// Pct for a given item type from a categories[] array (— if absent).
+function catPct(categories, itemType) {
+  const c = (categories || []).find((x) => x.item_type === itemType);
+  return c ? c.compliance_pct : "";
+}
+
+// Inline per-category breakdown: «СИЗ 80% (4/5) · СИ 100% (2/2)».
+function CategoryBreakdown({ categories, style }) {
+  if (!categories || categories.length === 0) {
+    return <span className="text-muted" style={{ fontSize: 13 }}>Нет норм</span>;
+  }
+  return (
+    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", ...style }}>
+      {categories.map((c) => (
+        <span key={c.item_type} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+          <span className="text-muted">{c.label}:</span>
+          <Badge kind={pctBadge(c.compliance_pct)}>{c.compliance_pct}%</Badge>
+          <span className="text-muted" style={{ fontSize: 12 }}>({c.issued}/{c.required})</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// One requirement row inside an employee's expanded detail table.
+function DetailRow({ d }) {
+  return (
+    <tr>
+      <td style={{ paddingLeft: 32 }}>{d.name}</td>
+      <td style={{ textAlign: "center" }}>{d.required}</td>
+      <td style={{ textAlign: "center" }}>{d.issued}</td>
+      <td style={{ textAlign: "center", color: d.missing ? "var(--red)" : "inherit", fontWeight: d.missing ? 600 : 400 }}>
+        {d.missing}
+      </td>
+      <td>
+        {d.expired ? (
+          <Badge kind="badge-red">Просрочено</Badge>
+        ) : d.missing > 0 ? (
+          <Badge kind="badge-amber">Не хватает</Badge>
+        ) : (
+          <Badge kind="badge-green">Ок</Badge>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 export default function Compliance() {
   const { isPrivileged } = useAuth();
   const [view, setView] = useState("employees");
@@ -21,6 +68,7 @@ export default function Compliance() {
   const [departmentId, setDepartmentId] = useState("");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  const [expandedDept, setExpandedDept] = useState(null);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -57,6 +105,9 @@ export default function Compliance() {
           "Не хватает": e.missing,
           "Просрочено": e.expired,
           "Укомплект. %": e.compliance_pct,
+          "СИЗ %": catPct(e.categories, "ppe"),
+          "СИ %": catPct(e.categories, "equipment"),
+          "Материалы %": catPct(e.categories, "material"),
         }));
         await exportExcel(rows, "Укомплектованность персонала", "compliance_employees");
       } else {
@@ -67,6 +118,9 @@ export default function Compliance() {
           "Частично": d.partially_equipped,
           "Не укомпл.": d.not_equipped,
           "Укомплект. %": d.compliance_pct,
+          "СИЗ %": catPct(d.categories, "ppe"),
+          "СИ %": catPct(d.categories, "equipment"),
+          "Материалы %": catPct(d.categories, "material"),
         }));
         await exportExcel(rows, "Укомплектованность по подразделениям", "compliance_departments");
       }
@@ -159,25 +213,28 @@ export default function Compliance() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {e.details.map((d, i) => (
-                                  <tr key={i}>
-                                    <td style={{ paddingLeft: 32 }}>{d.name}</td>
-                                    <td style={{ textAlign: "center" }}>{d.required}</td>
-                                    <td style={{ textAlign: "center" }}>{d.issued}</td>
-                                    <td style={{ textAlign: "center", color: d.missing ? "var(--red)" : "inherit", fontWeight: d.missing ? 600 : 400 }}>
-                                      {d.missing}
-                                    </td>
-                                    <td>
-                                      {d.expired ? (
-                                        <Badge kind="badge-red">Просрочено</Badge>
-                                      ) : d.missing > 0 ? (
-                                        <Badge kind="badge-amber">Не хватает</Badge>
-                                      ) : (
-                                        <Badge kind="badge-green">Ок</Badge>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
+                                {e.categories.map((cat) => {
+                                  const rows = e.details.filter((d) => d.item_type === cat.item_type);
+                                  if (rows.length === 0) return null;
+                                  return (
+                                    <React.Fragment key={cat.item_type}>
+                                      <tr>
+                                        <td colSpan={5} style={{ paddingLeft: 24, background: "var(--surface-3, #eef1f6)", fontWeight: 600 }}>
+                                          {cat.label}
+                                          <span style={{ marginLeft: 8 }}>
+                                            <Badge kind={pctBadge(cat.compliance_pct)}>{cat.compliance_pct}%</Badge>
+                                          </span>
+                                          <span className="text-muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
+                                            выдано {cat.issued} из {cat.required}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                      {rows.map((d, i) => (
+                                        <DetailRow key={i} d={d} />
+                                      ))}
+                                    </React.Fragment>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </td>
@@ -206,18 +263,30 @@ export default function Compliance() {
               </thead>
               <tbody>
                 {departments.map((d) => (
-                  <tr key={d.department_id}>
-                    <td className="cell-strong">{d.department}</td>
-                    <td style={{ textAlign: "center" }}>{d.employees_total}</td>
-                    <td style={{ textAlign: "center", color: "var(--green)" }}>{d.fully_equipped}</td>
-                    <td style={{ textAlign: "center", color: "var(--amber)" }}>{d.partially_equipped}</td>
-                    <td style={{ textAlign: "center", color: d.not_equipped ? "var(--red)" : "inherit", fontWeight: d.not_equipped ? 600 : 400 }}>
-                      {d.not_equipped}
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <Badge kind={pctBadge(d.compliance_pct)}>{d.compliance_pct}%</Badge>
-                    </td>
-                  </tr>
+                  <React.Fragment key={d.department_id}>
+                    <tr
+                      className="row-click"
+                      onClick={() => setExpandedDept(expandedDept === d.department_id ? null : d.department_id)}
+                    >
+                      <td className="cell-strong">{d.department}</td>
+                      <td style={{ textAlign: "center" }}>{d.employees_total}</td>
+                      <td style={{ textAlign: "center", color: "var(--green)" }}>{d.fully_equipped}</td>
+                      <td style={{ textAlign: "center", color: "var(--amber)" }}>{d.partially_equipped}</td>
+                      <td style={{ textAlign: "center", color: d.not_equipped ? "var(--red)" : "inherit", fontWeight: d.not_equipped ? 600 : 400 }}>
+                        {d.not_equipped}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <Badge kind={pctBadge(d.compliance_pct)}>{d.compliance_pct}%</Badge>
+                      </td>
+                    </tr>
+                    {expandedDept === d.department_id && (
+                      <tr>
+                        <td colSpan={6} style={{ background: "var(--surface-2)" }}>
+                          <CategoryBreakdown categories={d.categories} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

@@ -20,6 +20,11 @@ router = APIRouter(prefix="/api/norms", tags=["norms"])
 
 POSITIONS = ["Мастер", "Электромонтер", "Начальник", "Инженер"]
 
+# Compliance is reported per item type (категория): СИЗ / СИ / материалы.
+# Order here drives display order; "СИ" is средства измерения, not "оборудование".
+CATEGORY_ORDER = ["ppe", "equipment", "material"]
+CATEGORY_LABEL = {"ppe": "СИЗ", "equipment": "СИ", "material": "Материалы"}
+
 
 # ── Schemas ──────────────────────────────────────────────────────────────
 
@@ -43,6 +48,17 @@ class SetNormRequest(BaseModel):
     items: List[NormItemIn]
 
 
+class CategoryCompliance(BaseModel):
+    """Compliance figures for a single item type (СИЗ / СИ / материалы)."""
+    item_type: str
+    label: str
+    required: int
+    issued: int
+    missing: int
+    expired: int
+    compliance_pct: float
+
+
 class EmployeeCompliance(BaseModel):
     employee_id: int
     full_name: str
@@ -54,6 +70,7 @@ class EmployeeCompliance(BaseModel):
     missing: int
     expired: int
     compliance_pct: float
+    categories: List[CategoryCompliance] = []
     details: List[dict]
 
 
@@ -65,6 +82,7 @@ class DepartmentCompliance(BaseModel):
     partially_equipped: int
     not_equipped: int
     compliance_pct: float
+    categories: List[CategoryCompliance] = []
 
 
 # ── Positions ────────────────────────────────────────────────────────────
@@ -284,6 +302,10 @@ def _calc_compliance(db: Session, scope_department_id: Optional[int] = None):
         total_required = 0
         total_issued = 0
         total_expired = 0
+        # Per-item-type tallies (категория): СИЗ / СИ / материалы.
+        by_type: Dict[str, Dict[str, int]] = defaultdict(
+            lambda: {"required": 0, "issued": 0, "expired": 0}
+        )
 
         for members in requirements.values():
             req = max(m.quantity for m in members)
@@ -294,16 +316,27 @@ def _calc_compliance(db: Session, scope_department_id: Optional[int] = None):
                 cid in expired_catalog_ids and issued_by_catalog.get(cid, 0) > 0
                 for cid in member_ids
             )
+            # Item type of this requirement (from any group member with a
+            # catalog row); defaults to ppe if somehow unresolved.
+            item_type = next(
+                (m.catalog_item.item_type for m in members if m.catalog_item), "ppe"
+            )
             total_required += req
             total_issued += have
             if is_expired:
                 total_expired += 1
+            bt = by_type[item_type]
+            bt["required"] += req
+            bt["issued"] += have
+            if is_expired:
+                bt["expired"] += 1
 
             names = [m.catalog_item.name for m in members if m.catalog_item]
             details.append({
                 "catalog_item_id": member_ids[0],
                 "name": " / ".join(names) if names else "",
                 "alternatives": names,
+                "item_type": item_type,
                 "required": req,
                 "issued": have,
                 "missing": max(0, req - have),
@@ -324,10 +357,32 @@ def _calc_compliance(db: Session, scope_department_id: Optional[int] = None):
             missing=missing,
             expired=total_expired,
             compliance_pct=pct,
+            categories=_build_categories(by_type),
             details=details,
         ))
 
     return results
+
+
+def _build_categories(by_type: Dict[str, Dict[str, int]]) -> List[CategoryCompliance]:
+    """Turn per-item-type tallies into ordered CategoryCompliance rows."""
+    categories = []
+    for t in CATEGORY_ORDER:
+        if t not in by_type:
+            continue
+        bt = by_type[t]
+        req, iss = bt["required"], bt["issued"]
+        cpct = round(iss / req * 100, 1) if req > 0 else 100.0
+        categories.append(CategoryCompliance(
+            item_type=t,
+            label=CATEGORY_LABEL[t],
+            required=req,
+            issued=iss,
+            missing=max(0, req - iss),
+            expired=bt["expired"],
+            compliance_pct=cpct,
+        ))
+    return categories
 
 
 @router.get("/compliance/employees", response_model=List[EmployeeCompliance])
@@ -361,6 +416,8 @@ def compliance_departments(
                 "partial": 0,
                 "none": 0,
                 "pct_sum": 0.0,
+                # Per-item-type tallies summed across the department's employees.
+                "by_type": defaultdict(lambda: {"required": 0, "issued": 0, "expired": 0}),
             }
         d = by_dept[emp.department_id]
         d["total"] += 1
@@ -371,6 +428,11 @@ def compliance_departments(
             d["partial"] += 1
         else:
             d["none"] += 1
+        for c in emp.categories:
+            bt = d["by_type"][c.item_type]
+            bt["required"] += c.required
+            bt["issued"] += c.issued
+            bt["expired"] += c.expired
 
     return [
         DepartmentCompliance(
@@ -381,6 +443,7 @@ def compliance_departments(
             partially_equipped=d["partial"],
             not_equipped=d["none"],
             compliance_pct=round(d["pct_sum"] / d["total"], 1) if d["total"] else 100.0,
+            categories=_build_categories(d["by_type"]),
         )
         for d in sorted(by_dept.values(), key=lambda x: x["department"])
     ]
