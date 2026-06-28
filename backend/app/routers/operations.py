@@ -183,6 +183,10 @@ def return_items(
         item.status = new_status
         item.current_employee_id = None
         item.date_issued = None
+        # A lost unit is written off outright — retire it to the «Удалённое» bin
+        # like the explicit write-off does, so all written-off items behave alike.
+        if new_status == InventoryStatus.WRITTEN_OFF.value:
+            item.is_active = False
         if new_status == InventoryStatus.IN_STOCK.value and item.current_warehouse_id is None:
             item.current_warehouse_id = _default_warehouse_id(db, item.department_owner_id)
 
@@ -468,6 +472,9 @@ def writeoff_item(
         raise HTTPException(status_code=400, detail="Нельзя списать выданную позицию. Сначала возврат.")
     item.status = InventoryStatus.WRITTEN_OFF.value
     item.current_employee_id = None
+    # Final write-off retires the unit: soft-delete it so it leaves the active
+    # registries and moves to the «Удалённое» bin, where it can be purged.
+    item.is_active = False
     log_movement(
         db,
         user_id=current.id,
@@ -478,4 +485,4 @@ def writeoff_item(
         comment=comment,
     )
     db.commit()
-    return {"detail": "Позиция списана"}
+    return {"detail": "Позиция списана и перенесена в «Удалённое»"}

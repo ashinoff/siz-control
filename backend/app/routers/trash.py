@@ -65,6 +65,9 @@ class TrashResult(BaseModel):
 class TrashAction(BaseModel):
     kind: str
     id: int
+    # When true, sever references (detach nullable FKs, delete dependent
+    # history) before purging. Structural NOT-NULL refs still block.
+    force: bool = False
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -135,6 +138,61 @@ def _blockers(db: Session, kind: str, obj) -> List[str]:
     return b
 
 
+def _break_links(db: Session, kind: str, obj) -> None:
+    """Sever references so the record can be purged.
+
+    Nullable foreign keys are detached (set NULL), preserving the journal rows
+    they sit on; dependent history rows that cannot be detached (assignments,
+    verification records, norms) are deleted. Structural NOT-NULL references
+    (inventory→catalog/department, subcategory→category, employee/warehouse→
+    department) are intentionally NOT cascaded — they remain as blockers so a
+    parent can't silently wipe out its children.
+    """
+    oid = obj.id
+    if kind == "inventory":
+        db.query(Assignment).filter(Assignment.inventory_item_id == oid).delete(synchronize_session=False)
+        db.query(VerificationRecord).filter(VerificationRecord.inventory_item_id == oid).delete(synchronize_session=False)
+        db.query(FileAttachment).filter(FileAttachment.inventory_item_id == oid).update(
+            {FileAttachment.inventory_item_id: None}, synchronize_session=False)
+        db.query(Movement).filter(Movement.inventory_item_id == oid).update(
+            {Movement.inventory_item_id: None}, synchronize_session=False)
+    elif kind == "catalog":
+        db.query(PositionNorm).filter(PositionNorm.catalog_item_id == oid).delete(synchronize_session=False)
+    elif kind == "category":
+        db.query(CatalogItem).filter(CatalogItem.category_id == oid).update(
+            {CatalogItem.category_id: None}, synchronize_session=False)
+    elif kind == "subcategory":
+        db.query(CatalogItem).filter(CatalogItem.subcategory_id == oid).update(
+            {CatalogItem.subcategory_id: None}, synchronize_session=False)
+    elif kind == "employee":
+        db.query(Assignment).filter(Assignment.employee_id == oid).delete(synchronize_session=False)
+        db.query(InventoryItem).filter(InventoryItem.current_employee_id == oid).update(
+            {InventoryItem.current_employee_id: None}, synchronize_session=False)
+        db.query(Movement).filter(Movement.employee_id == oid).update(
+            {Movement.employee_id: None}, synchronize_session=False)
+    elif kind == "department":
+        db.query(User).filter(User.department_id == oid).update(
+            {User.department_id: None}, synchronize_session=False)
+        for col in (Movement.department_id, Movement.from_department_id, Movement.to_department_id):
+            db.query(Movement).filter(col == oid).update({col: None}, synchronize_session=False)
+    elif kind == "warehouse":
+        db.query(InventoryItem).filter(InventoryItem.current_warehouse_id == oid).update(
+            {InventoryItem.current_warehouse_id: None}, synchronize_session=False)
+        for col in (Movement.from_warehouse_id, Movement.to_warehouse_id):
+            db.query(Movement).filter(col == oid).update({col: None}, synchronize_session=False)
+    elif kind == "user":
+        db.query(Movement).filter(Movement.user_id == oid).update(
+            {Movement.user_id: None}, synchronize_session=False)
+        db.query(AuditLog).filter(AuditLog.user_id == oid).update(
+            {AuditLog.user_id: None}, synchronize_session=False)
+        db.query(Assignment).filter(Assignment.issued_by_user_id == oid).update(
+            {Assignment.issued_by_user_id: None}, synchronize_session=False)
+        db.query(Assignment).filter(Assignment.returned_by_user_id == oid).update(
+            {Assignment.returned_by_user_id: None}, synchronize_session=False)
+        db.query(VerificationRecord).filter(VerificationRecord.user_id == oid).update(
+            {VerificationRecord.user_id: None}, synchronize_session=False)
+
+
 def _get(db: Session, kind: str, obj_id: int):
     if kind not in _KINDS:
         raise HTTPException(400, f"Неизвестный тип: {kind}")
@@ -188,11 +246,25 @@ def purge(payload: TrashAction, db: Session = Depends(get_db), current: User = D
     if payload.kind == "user" and obj.id == current.id:
         raise HTTPException(400, "Нельзя удалить навсегда свою учётную запись")
     blockers = _blockers(db, payload.kind, obj)
-    if blockers:
+    if blockers and not payload.force:
         raise HTTPException(
             400,
             "Нельзя удалить навсегда, пока есть связанные записи — " + "; ".join(blockers),
         )
+    if blockers and payload.force:
+        # Sever what can be severed, then re-check. Anything left is structural
+        # (children that would be orphaned) and must be handled separately.
+        _break_links(db, payload.kind, obj)
+        db.flush()
+        remaining = _blockers(db, payload.kind, obj)
+        if remaining:
+            db.rollback()
+            raise HTTPException(
+                400,
+                "Остались зависимые записи, которые нельзя отвязать автоматически — "
+                + "; ".join(remaining),
+            )
+        log_audit(db, user_id=current.id, action="break_links", entity_type=payload.kind, entity_id=obj.id)
     # Audit BEFORE delete so the entity_id is still meaningful.
     log_audit(db, user_id=current.id, action="purge", entity_type=payload.kind, entity_id=obj.id)
     db.delete(obj)

@@ -45,7 +45,12 @@ export default function Trash() {
     setBusy(`${rec.kind}:${rec.id}`);
     setMsg(null);
     try {
-      const { data } = await api.post("/api/trash/purge", { kind: rec.kind, id: rec.id });
+      const { data } = await api.post("/api/trash/purge", {
+        kind: rec.kind,
+        id: rec.id,
+        // Sever links automatically when the record is blocked by references.
+        force: rec.blockers.length > 0,
+      });
       setMsg({ kind: "success", text: data.detail });
       setToPurge(null);
       await load();
@@ -126,9 +131,9 @@ export default function Trash() {
                             </button>
                             <button
                               className="btn btn-sm btn-ghost"
-                              style={{ color: blocked ? "var(--text-faint)" : "var(--red)" }}
-                              disabled={blocked || busy === key}
-                              title={blocked ? "Сначала уберите связанные записи" : "Удалить навсегда"}
+                              style={{ color: "var(--red)" }}
+                              disabled={busy === key}
+                              title={blocked ? "Разорвать связи и удалить навсегда" : "Удалить навсегда"}
                               onClick={() => setToPurge(rec)}
                             >
                               <IconTrash size={14} /> Навсегда
@@ -149,7 +154,14 @@ export default function Trash() {
         open={!!toPurge}
         danger
         title="Удалить навсегда?"
-        message={`«${toPurge?.title || ""}» будет стёрта из базы без возможности восстановления.`}
+        message={
+          toPurge?.blockers?.length
+            ? `«${toPurge.title}» имеет связи: ${toPurge.blockers.join(" · ")}. ` +
+              "Они будут разорваны (отвязка сотрудника/категории/склада и удаление связанной истории), " +
+              "после чего запись будет стёрта из базы. Действие необратимо. " +
+              "Если останутся зависимые записи (например, позиции учёта у категории) — удаление не выполнится."
+            : `«${toPurge?.title || ""}» будет стёрта из базы без возможности восстановления.`
+        }
         confirmText="Удалить навсегда"
         onConfirm={() => toPurge && purge(toPurge)}
         onClose={() => setToPurge(null)}

@@ -347,6 +347,27 @@ def _run_checks(db: Session) -> List[Issue]:
             link_label="В корзину",
         ))
 
+    # ── 15. Written-off items still active (not moved to trash) ──
+    wo_active = (
+        db.query(InventoryItem)
+        .filter(
+            InventoryItem.is_active.is_(True),
+            InventoryItem.status == InventoryStatus.WRITTEN_OFF.value,
+        )
+        .count()
+    )
+    if wo_active:
+        issues.append(Issue(
+            id="written_off_active",
+            severity="warning",
+            category="Списанные не в корзине",
+            message=f"Списанных позиций в реестрах: {wo_active} — их можно перенести в «Удалённое»",
+            fix_action="archive_written_off:0",
+            fix_label="Перенести в корзину",
+            link="/trash",
+            link_label="В корзину",
+        ))
+
     return issues
 
 
@@ -473,6 +494,20 @@ def fix_issue(
         wh.is_active = False
         db.commit()
         return {"detail": f"Склад «{wh.name}» деактивирован"}
+
+    elif action == "archive_written_off":
+        items = (
+            db.query(InventoryItem)
+            .filter(
+                InventoryItem.is_active.is_(True),
+                InventoryItem.status == InventoryStatus.WRITTEN_OFF.value,
+            )
+            .all()
+        )
+        for it in items:
+            it.is_active = False
+        db.commit()
+        return {"detail": f"Перенесено в корзину: {len(items)}"}
 
     elif action == "close_assignment" and item_id:
         asn = db.query(Assignment).filter(Assignment.id == item_id).first()
