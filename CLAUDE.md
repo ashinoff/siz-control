@@ -38,13 +38,15 @@ backend/
     dependencies.py  зависимости FastAPI (текущий пользователь, проверка прав)
     schema_sync.py   досоздание недостающих КОЛОНОК в существующих таблицах
     seed.py          первичное наполнение (роли, подразделения, склады, админ) — идемпотентно
-    models/          SQLAlchemy-модели: user, organization, catalog, inventory, norms, journal
+    models/          SQLAlchemy-модели: user, organization (Department,
+                     Warehouse, Employee, EmployeeAuthorization), catalog,
+                     inventory, norms, journal
     routers/         эндпоинты по разделам: auth, users, departments, employees,
                      catalog, inventory, operations, reports, dashboard, journal,
                      export, norms, importdata, import_issued, dbcheck, trash,
-                     documents, backup
+                     documents, ot, backup
     schemas/         Pydantic-схемы запросов/ответов
-    services/        бизнес-логика: audit, reports, status
+    services/        бизнес-логика: audit, reports, status, ot (охрана труда)
   alembic/           миграции (на практике схема создаётся через create_all +
                      schema_sync — см. «Грабли»)
   requirements.txt
@@ -54,7 +56,8 @@ frontend/
     pages/           страницы разделов
     components/       Layout, Sidebar, формы, BrandMark, ui, иконки
     lib/             brandFlash.js (эффект «разряд тока» на логотипе),
-                     menuMeta.js (меню и подсказки), format.js, exportExcel.js
+                     menuMeta.js (меню и подсказки), format.js, exportExcel.js,
+                     otRights.js (список видов допусков ОТ — дополнять тут)
     context/         AuthContext.jsx
     api/client.js    axios-клиент
   vite.config.js
@@ -203,3 +206,15 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
   `--brand-core`/`--brand-arc` (бело-голубые на тёмном сайдбаре, насыщённо-синие
   на светлой карточке логина). Эмблема — `assets/rosseti.svg`, перекрашена в
   белый через `filter: brightness(0) invert(1)`. Уважает `prefers-reduced-motion`.
+- **Охрана труда (ОТ)** — ОТДЕЛЬНЫЙ блок, не смешивать с СИЗ-контролем/отчётами.
+  Свой порог `OT_WARNING_DAYS = 7` (СИЗ — 30, не путать). Эндпоинты под
+  `/api/ot/*` (`services/ot.py`, `routers/ot.py`): `deadlines` (срок ЭБ
+  `eb_next_exam_date` + `expiry_date` допусков, только expiring/expired) и
+  `report` (+ `/export`, переиспользует `to_xlsx`/`to_csv` из reports). Поля ЭБ
+  у `Employee` (`eb_group`, `eb_exam_date`, `eb_next_exam_date`) — nullable,
+  досоздаются `schema_sync`. Допуски — таблица `employee_authorizations`
+  (один-ко-многим, `name` свободный), CRUD вложен в
+  `/api/employees/{id}/authorizations`. Меню — секция «Охрана труда»; счётчик ОТ
+  в сайдбаре отдельный (`otAlerts` в Layout/Sidebar, не путать с СИЗ `alerts`).
+  Список видов допусков для выпадашки — `frontend/src/lib/otRights.js`
+  (дополнять там; в карточке есть «Другое (вписать)» для отсутствующих).
