@@ -13,6 +13,7 @@ import {
 } from "../lib/format.js";
 import { IconPlus, IconEdit, IconTrash, IconUsers, IconDownload, IconClipboard } from "../components/icons.jsx";
 import exportExcel from "../lib/exportExcel.js";
+import { OT_RIGHTS } from "../lib/otRights.js";
 import PageHeading from "../components/PageHeading.jsx";
 
 const emptyEmp = {
@@ -473,22 +474,29 @@ function EmployeeModal({ emp, departments, onClose, onSaved }) {
 
 // Editable list of an employee's authorizations / rights (ОТ). Free-form name.
 function AuthorizationsEditor({ employeeId }) {
-  const emptyDraft = { name: "", issued_date: "", expiry_date: "", note: "" };
+  const blank = { name: "", issued_date: "", expiry_date: "", note: "", custom: false };
   const [list, setList] = useState([]);
   const [draft, setDraft] = useState(null); // null = closed; object = add/edit form
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const load = useCallback(() => {
-    api.get(`/api/employees/${employeeId}/authorizations`).then(({ data }) => setList(data)).catch(() => {});
-  }, [employeeId]);
+  const load = useCallback(
+    () => api.get(`/api/employees/${employeeId}/authorizations`).then(({ data }) => setList(data)).catch(() => {}),
+    [employeeId]
+  );
   useEffect(() => {
     load();
   }, [load]);
 
   const setD = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
 
-  const save = async () => {
+  // Rights already assigned drop out of the dropdown, so you keep adding the
+  // remaining ones until the list is exhausted (Render-env-vars style). When
+  // editing, the row's own value stays selectable.
+  const used = new Set(list.map((a) => a.name));
+  const availableRights = OT_RIGHTS.filter((r) => !used.has(r) || (draft && r === draft.name));
+
+  const save = async (again) => {
     setBusy(true);
     setError(null);
     const payload = {
@@ -500,8 +508,8 @@ function AuthorizationsEditor({ employeeId }) {
     try {
       if (draft.id) await api.put(`/api/employees/${employeeId}/authorizations/${draft.id}`, payload);
       else await api.post(`/api/employees/${employeeId}/authorizations`, payload);
-      setDraft(null);
-      load();
+      await load();
+      setDraft(again ? { ...blank } : null);
     } catch (e) {
       setError(apiError(e));
     } finally {
@@ -518,6 +526,15 @@ function AuthorizationsEditor({ employeeId }) {
       alert(apiError(e));
     }
   };
+
+  const startEdit = (a) =>
+    setDraft({
+      ...a,
+      issued_date: a.issued_date || "",
+      expiry_date: a.expiry_date || "",
+      note: a.note || "",
+      custom: !OT_RIGHTS.includes(a.name),
+    });
 
   return (
     <div>
@@ -543,12 +560,7 @@ function AuthorizationsEditor({ employeeId }) {
                 <td>{a.expiry_date || "—"}</td>
                 <td>
                   <div className="btn-row">
-                    <button
-                      type="button"
-                      className="btn btn-icon btn-ghost"
-                      title="Изменить"
-                      onClick={() => setDraft({ ...a, issued_date: a.issued_date || "", expiry_date: a.expiry_date || "", note: a.note || "" })}
-                    >
+                    <button type="button" className="btn btn-icon btn-ghost" title="Изменить" onClick={() => startEdit(a)}>
                       <IconEdit size={15} />
                     </button>
                     <button
@@ -574,11 +586,28 @@ function AuthorizationsEditor({ employeeId }) {
           <div className="form-grid">
             <div className="field full">
               <label>Вид допуска / права <span style={{ color: "var(--red)" }}>*</span></label>
-              <Input
-                value={draft.name}
-                onChange={(e) => setD("name", e.target.value)}
-                placeholder="напр. Работы на высоте, Допуск в ЭУ, Стропальщик…"
-              />
+              <Select
+                value={draft.custom ? "__custom__" : draft.name || ""}
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") setDraft((d) => ({ ...d, custom: true, name: "" }));
+                  else setDraft((d) => ({ ...d, custom: false, name: e.target.value }));
+                }}
+              >
+                <option value="">— выберите право —</option>
+                {availableRights.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+                <option value="__custom__">Другое (вписать вручную)…</option>
+              </Select>
+              {draft.custom && (
+                <Input
+                  style={{ marginTop: 6 }}
+                  value={draft.name}
+                  onChange={(e) => setD("name", e.target.value)}
+                  placeholder="Впишите вид права / допуска"
+                  autoFocus
+                />
+              )}
             </div>
             <Field label="Дата выдачи / проверки">
               <Input type="date" value={draft.issued_date} onChange={(e) => setD("issued_date", e.target.value)} />
@@ -595,14 +624,19 @@ function AuthorizationsEditor({ employeeId }) {
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft(null)}>
               Отмена
             </button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy || !draft.name}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => save(false)} disabled={busy || !draft.name}>
               Сохранить
             </button>
+            {!draft.id && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => save(true)} disabled={busy || !draft.name}>
+                Сохранить и добавить ещё
+              </button>
+            )}
           </div>
         </div>
       ) : (
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft({ ...emptyDraft })}>
-          <IconPlus size={15} /> Добавить допуск
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft({ ...blank })}>
+          <IconPlus size={15} /> Добавить право
         </button>
       )}
     </div>
