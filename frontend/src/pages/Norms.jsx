@@ -217,6 +217,7 @@ export default function Norms() {
                 <thead>
                   <tr>
                     <th>Наименование</th>
+                    <th>Подкатегория</th>
                     <th>Тип</th>
                     {isPrivileged && <th style={{ width: 50 }}></th>}
                   </tr>
@@ -225,6 +226,7 @@ export default function Norms() {
                   {filteredCatalog.map((c) => (
                     <tr key={c.id}>
                       <td className="cell-strong">{c.name}</td>
+                      <td className="muted" style={{ fontSize: 12 }}>{c.subcategory?.name || "—"}</td>
                       <td>
                         <Badge kind="badge-gray" dot={false}>
                           {NORM_TYPE_BADGE[c.item_type] || c.item_type}
