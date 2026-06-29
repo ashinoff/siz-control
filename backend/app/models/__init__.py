@@ -10,7 +10,12 @@ from .journal import (  # noqa: F401
     VerificationRecord,
 )
 from .norms import PositionNorm  # noqa: F401
-from .organization import Department, Employee, Warehouse  # noqa: F401
+from .organization import (  # noqa: F401
+    Department,
+    Employee,
+    EmployeeAuthorization,
+    Warehouse,
+)
 from .user import Role, User  # noqa: F401
 
 __all__ = [
@@ -19,6 +24,7 @@ __all__ = [
     "Department",
     "Warehouse",
     "Employee",
+    "EmployeeAuthorization",
     "Category",
     "Subcategory",
     "CatalogItem",

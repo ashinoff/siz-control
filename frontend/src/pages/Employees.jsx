@@ -24,7 +24,12 @@ const emptyEmp = {
   phone: "",
   status: "working",
   comment: "",
+  eb_group: "",
+  eb_exam_date: "",
+  eb_next_exam_date: "",
 };
+
+const EB_GROUPS = ["II", "III", "IV", "V"];
 
 export default function Employees() {
   const { isPrivileged, user } = useAuth();
@@ -332,7 +337,12 @@ function IssuedItemsModal({ employee, onClose }) {
 
 function EmployeeModal({ emp, departments, onClose, onSaved }) {
   const isEdit = !!emp.id;
-  const [form, setForm] = useState(emp);
+  const [form, setForm] = useState({
+    ...emp,
+    eb_group: emp.eb_group || "",
+    eb_exam_date: emp.eb_exam_date || "",
+    eb_next_exam_date: emp.eb_next_exam_date || "",
+  });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -349,6 +359,9 @@ function EmployeeModal({ emp, departments, onClose, onSaved }) {
       phone: form.phone || null,
       status: form.status,
       comment: form.comment || null,
+      eb_group: form.eb_group || null,
+      eb_exam_date: form.eb_exam_date || null,
+      eb_next_exam_date: form.eb_next_exam_date || null,
     };
     try {
       if (isEdit) await api.put(`/api/employees/${emp.id}`, payload);
@@ -420,11 +433,178 @@ function EmployeeModal({ emp, departments, onClose, onSaved }) {
             ))}
           </Select>
         </Field>
+
+        {/* Охрана труда — электробезопасность */}
+        <div className="field full" style={{ marginTop: 4 }}>
+          <label style={{ fontWeight: 600, color: "var(--navy)" }}>Охрана труда — электробезопасность</label>
+        </div>
+        <Field label="Группа по ЭБ">
+          <Select value={form.eb_group} onChange={(e) => set("eb_group", e.target.value)}>
+            <option value="">—</option>
+            {EB_GROUPS.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Дата проверки знаний ЭБ">
+          <Input type="date" value={form.eb_exam_date} onChange={(e) => set("eb_exam_date", e.target.value)} />
+        </Field>
+        <Field label="Следующая проверка ЭБ">
+          <Input type="date" value={form.eb_next_exam_date} onChange={(e) => set("eb_next_exam_date", e.target.value)} />
+        </Field>
+
+        <div className="field full">
+          <label>Допуски / права</label>
+          {isEdit ? (
+            <AuthorizationsEditor employeeId={emp.id} />
+          ) : (
+            <div className="hint">Сохраните сотрудника, затем добавьте допуски в его карточке.</div>
+          )}
+        </div>
+
         <div className="field full">
           <label>Комментарий</label>
           <Textarea value={form.comment} onChange={(e) => set("comment", e.target.value)} />
         </div>
       </div>
     </Modal>
+  );
+}
+
+// Editable list of an employee's authorizations / rights (ОТ). Free-form name.
+function AuthorizationsEditor({ employeeId }) {
+  const emptyDraft = { name: "", issued_date: "", expiry_date: "", note: "" };
+  const [list, setList] = useState([]);
+  const [draft, setDraft] = useState(null); // null = closed; object = add/edit form
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const load = useCallback(() => {
+    api.get(`/api/employees/${employeeId}/authorizations`).then(({ data }) => setList(data)).catch(() => {});
+  }, [employeeId]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const setD = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    const payload = {
+      name: draft.name,
+      issued_date: draft.issued_date || null,
+      expiry_date: draft.expiry_date || null,
+      note: draft.note || null,
+    };
+    try {
+      if (draft.id) await api.put(`/api/employees/${employeeId}/authorizations/${draft.id}`, payload);
+      else await api.post(`/api/employees/${employeeId}/authorizations`, payload);
+      setDraft(null);
+      load();
+    } catch (e) {
+      setError(apiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id) => {
+    if (!window.confirm("Удалить запись допуска?")) return;
+    try {
+      await api.delete(`/api/employees/${employeeId}/authorizations/${id}`);
+      load();
+    } catch (e) {
+      alert(apiError(e));
+    }
+  };
+
+  return (
+    <div>
+      {list.length === 0 && !draft && <div className="hint">Допуски не добавлены.</div>}
+      {list.length > 0 && (
+        <table className="data" style={{ margin: "4px 0 8px" }}>
+          <thead>
+            <tr>
+              <th>Вид допуска / права</th>
+              <th>Выдан</th>
+              <th>Действует до</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((a) => (
+              <tr key={a.id}>
+                <td className="cell-strong">
+                  {a.name}
+                  {a.note && <div className="cell-sub">{a.note}</div>}
+                </td>
+                <td>{a.issued_date || "—"}</td>
+                <td>{a.expiry_date || "—"}</td>
+                <td>
+                  <div className="btn-row">
+                    <button
+                      type="button"
+                      className="btn btn-icon btn-ghost"
+                      title="Изменить"
+                      onClick={() => setDraft({ ...a, issued_date: a.issued_date || "", expiry_date: a.expiry_date || "", note: a.note || "" })}
+                    >
+                      <IconEdit size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-icon btn-ghost"
+                      style={{ color: "var(--red)" }}
+                      title="Удалить"
+                      onClick={() => remove(a.id)}
+                    >
+                      <IconTrash size={15} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {draft ? (
+        <div className="card card-pad" style={{ background: "var(--surface-2)" }}>
+          {error && <Alert kind="error">{error}</Alert>}
+          <div className="form-grid">
+            <div className="field full">
+              <label>Вид допуска / права <span style={{ color: "var(--red)" }}>*</span></label>
+              <Input
+                value={draft.name}
+                onChange={(e) => setD("name", e.target.value)}
+                placeholder="напр. Работы на высоте, Допуск в ЭУ, Стропальщик…"
+              />
+            </div>
+            <Field label="Дата выдачи / проверки">
+              <Input type="date" value={draft.issued_date} onChange={(e) => setD("issued_date", e.target.value)} />
+            </Field>
+            <Field label="Действует до / следующая">
+              <Input type="date" value={draft.expiry_date} onChange={(e) => setD("expiry_date", e.target.value)} />
+            </Field>
+            <div className="field full">
+              <label>Примечание</label>
+              <Textarea value={draft.note} onChange={(e) => setD("note", e.target.value)} />
+            </div>
+          </div>
+          <div className="btn-row" style={{ marginTop: 8 }}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft(null)}>
+              Отмена
+            </button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy || !draft.name}>
+              Сохранить
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft({ ...emptyDraft })}>
+          <IconPlus size={15} /> Добавить допуск
+        </button>
+      )}
+    </div>
   );
 }

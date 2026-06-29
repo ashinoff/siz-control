@@ -24,6 +24,7 @@ import {
   IconDatabase,
   IconWriteoff,
   IconTrash,
+  IconAlert,
 } from "./icons.jsx";
 
 const SECTIONS = [
@@ -69,6 +70,13 @@ const SECTIONS = [
     ],
   },
   {
+    label: "Охрана труда",
+    items: [
+      { to: "/ot/deadlines", icon: IconAlert, label: "Контроль сроков ОТ", otAlertKey: true, neon: true },
+      { to: "/ot/report", icon: IconClipboard, label: "Отчёт по ОТ" },
+    ],
+  },
+  {
     label: "Администрирование",
     items: [
       { to: "/catalog", icon: IconBook, label: "Справочники", privileged: true },
@@ -82,7 +90,7 @@ const SECTIONS = [
   },
 ];
 
-export default function Sidebar({ open, alerts = 0, onNavigate }) {
+export default function Sidebar({ open, alerts = 0, otAlerts = 0, onNavigate }) {
   const { isAdmin, isPrivileged } = useAuth();
 
   const visible = (item) => {
@@ -121,6 +129,9 @@ export default function Sidebar({ open, alerts = 0, onNavigate }) {
                     <span>{item.label}</span>
                     {item.alertKey && alerts > 0 && (
                       <span className="badge-count">{alerts}</span>
+                    )}
+                    {item.otAlertKey && otAlerts > 0 && (
+                      <span className="badge-count">{otAlerts}</span>
                     )}
                   </NavLink>
                 );

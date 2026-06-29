@@ -23,6 +23,8 @@ const TITLES = {
   "/writeoff": "Списание",
   "/norms": "ТОН — Нормы по должностям",
   "/compliance": "Укомплектованность",
+  "/ot/deadlines": "Контроль сроков ОТ",
+  "/ot/report": "Отчёт по ОТ",
   "/deadlines": "Контроль сроков",
   "/reports": "Отчеты",
   "/journal": "Журнал действий",
@@ -41,6 +43,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [alerts, setAlerts] = useState(0);
+  const [otAlerts, setOtAlerts] = useState(0);
   const [pwOpen, setPwOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -60,6 +63,12 @@ export default function Layout() {
         if (active) setAlerts(data.alert_items || 0);
       })
       .catch(() => {});
+    api
+      .get("/api/ot/deadlines")
+      .then(({ data }) => {
+        if (active) setOtAlerts((data.counts?.expiring || 0) + (data.counts?.expired || 0));
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -70,7 +79,7 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <Sidebar open={sidebarOpen} alerts={alerts} />
+      <Sidebar open={sidebarOpen} alerts={alerts} otAlerts={otAlerts} />
       <div className="main-area">
         <header className="topbar">
           <button

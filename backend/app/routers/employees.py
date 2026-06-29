@@ -13,9 +13,16 @@ from ..dependencies import (
     require_privileged,
     scoped_department_id,
 )
-from ..models.organization import Employee
+from ..models.organization import Employee, EmployeeAuthorization
 from ..models.user import User
-from ..schemas.organization import EmployeeCreate, EmployeeOut, EmployeeUpdate
+from ..schemas.organization import (
+    AuthorizationCreate,
+    AuthorizationOut,
+    AuthorizationUpdate,
+    EmployeeCreate,
+    EmployeeOut,
+    EmployeeUpdate,
+)
 from ..services.audit import log_audit
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
@@ -112,3 +119,93 @@ def delete_employee(
     log_audit(db, user_id=current.id, action="delete_employee", entity_type="employee", entity_id=emp.id)
     db.commit()
     return {"detail": "Сотрудник деактивирован"}
+
+
+# ── Допуски / права / проверки (ОТ) ────────────────────────────────────────
+
+def _get_scoped_employee(db: Session, current: User, employee_id: int) -> Employee:
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    assert_department_access(current, emp.department_id)
+    return emp
+
+
+@router.get("/{employee_id}/authorizations", response_model=List[AuthorizationOut])
+def list_authorizations(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    _get_scoped_employee(db, current, employee_id)
+    return (
+        db.query(EmployeeAuthorization)
+        .filter(EmployeeAuthorization.employee_id == employee_id)
+        .order_by(EmployeeAuthorization.id)
+        .all()
+    )
+
+
+@router.post("/{employee_id}/authorizations", response_model=AuthorizationOut, status_code=201)
+def create_authorization(
+    employee_id: int,
+    payload: AuthorizationCreate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_privileged),
+):
+    _get_scoped_employee(db, current, employee_id)
+    auth = EmployeeAuthorization(employee_id=employee_id, **payload.model_dump())
+    db.add(auth)
+    db.flush()
+    log_audit(db, user_id=current.id, action="create_authorization",
+              entity_type="employee_authorization", entity_id=auth.id)
+    db.commit()
+    db.refresh(auth)
+    return auth
+
+
+@router.put("/{employee_id}/authorizations/{auth_id}", response_model=AuthorizationOut)
+def update_authorization(
+    employee_id: int,
+    auth_id: int,
+    payload: AuthorizationUpdate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_privileged),
+):
+    _get_scoped_employee(db, current, employee_id)
+    auth = (
+        db.query(EmployeeAuthorization)
+        .filter(EmployeeAuthorization.id == auth_id, EmployeeAuthorization.employee_id == employee_id)
+        .first()
+    )
+    if not auth:
+        raise HTTPException(status_code=404, detail="Запись допуска не найдена")
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(auth, key, value)
+    log_audit(db, user_id=current.id, action="update_authorization",
+              entity_type="employee_authorization", entity_id=auth.id)
+    db.commit()
+    db.refresh(auth)
+    return auth
+
+
+@router.delete("/{employee_id}/authorizations/{auth_id}")
+def delete_authorization(
+    employee_id: int,
+    auth_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_privileged),
+):
+    _get_scoped_employee(db, current, employee_id)
+    auth = (
+        db.query(EmployeeAuthorization)
+        .filter(EmployeeAuthorization.id == auth_id, EmployeeAuthorization.employee_id == employee_id)
+        .first()
+    )
+    if not auth:
+        raise HTTPException(status_code=404, detail="Запись допуска не найдена")
+    db.delete(auth)
+    log_audit(db, user_id=current.id, action="delete_authorization",
+              entity_type="employee_authorization", entity_id=auth_id)
+    db.commit()
+    return {"detail": "Запись допуска удалена"}

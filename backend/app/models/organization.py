@@ -1,5 +1,5 @@
 """Organizational models: Department, Warehouse, Employee."""
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -42,4 +42,34 @@ class Employee(Base, TimestampMixin, SoftDeleteMixin):
     status = Column(String(20), default=EmployeeStatus.WORKING.value, nullable=False)
     comment = Column(Text, nullable=True)
 
+    # ── Охрана труда (ОТ) — электробезопасность ──────────────────────────
+    # All nullable so schema_sync can add them to an existing table on Amvera.
+    eb_group = Column(String(10), nullable=True)        # группа по ЭБ: II–V
+    eb_exam_date = Column(Date, nullable=True)          # последняя проверка знаний
+    eb_next_exam_date = Column(Date, nullable=True)     # следующая проверка знаний
+
     department = relationship("Department", back_populates="employees")
+    authorizations = relationship(
+        "EmployeeAuthorization",
+        back_populates="employee",
+        cascade="all, delete-orphan",
+        order_by="EmployeeAuthorization.id",
+    )
+
+
+class EmployeeAuthorization(Base):
+    """Допуски / права / периодические проверки сотрудника (ОТ).
+
+    Open-ended one-to-many list — ``name`` is free-form so any kind of
+    authorization can be tracked. ``expiry_date`` feeds the ОТ deadline control.
+    """
+    __tablename__ = "employee_authorizations"
+
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)       # вид допуска/права/проверки
+    issued_date = Column(Date, nullable=True)         # когда выдан/пройдена
+    expiry_date = Column(Date, nullable=True)         # срок действия / следующая
+    note = Column(Text, nullable=True)
+
+    employee = relationship("Employee", back_populates="authorizations")

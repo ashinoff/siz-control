@@ -21,6 +21,8 @@ import Catalog from "./pages/Catalog.jsx";
 import Users from "./pages/Users.jsx";
 import Norms from "./pages/Norms.jsx";
 import Compliance from "./pages/Compliance.jsx";
+import OtDeadlines from "./pages/OtDeadlines.jsx";
+import OtReport from "./pages/OtReport.jsx";
 import Import from "./pages/Import.jsx";
 import ImportIssued from "./pages/ImportIssued.jsx";
 import Backup from "./pages/Backup.jsx";
@@ -87,6 +89,8 @@ export default function App() {
         <Route path="/writeoff" element={<Writeoff />} />
         <Route path="/norms" element={<Norms />} />
         <Route path="/compliance" element={<Compliance />} />
+        <Route path="/ot/deadlines" element={<OtDeadlines />} />
+        <Route path="/ot/report" element={<OtReport />} />
         <Route path="/deadlines" element={<DeadlineControl />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/journal" element={<Journal />} />

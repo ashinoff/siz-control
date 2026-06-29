@@ -1,5 +1,6 @@
 """Department, warehouse and employee schemas."""
-from typing import Optional
+from datetime import date
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -34,6 +35,10 @@ class EmployeeBase(BaseModel):
     phone: Optional[str] = None
     status: EmployeeStatus = EmployeeStatus.WORKING
     comment: Optional[str] = None
+    # Охрана труда — электробезопасность
+    eb_group: Optional[str] = None
+    eb_exam_date: Optional[date] = None
+    eb_next_exam_date: Optional[date] = None
 
 
 class EmployeeCreate(EmployeeBase):
@@ -49,6 +54,38 @@ class EmployeeUpdate(BaseModel):
     phone: Optional[str] = None
     status: Optional[EmployeeStatus] = None
     comment: Optional[str] = None
+    eb_group: Optional[str] = None
+    eb_exam_date: Optional[date] = None
+    eb_next_exam_date: Optional[date] = None
+
+
+# Допуски / права / периодические проверки (ОТ) -----------------------------
+
+class AuthorizationBase(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    issued_date: Optional[date] = None
+    expiry_date: Optional[date] = None
+    note: Optional[str] = None
+
+
+class AuthorizationCreate(AuthorizationBase):
+    pass
+
+
+class AuthorizationUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=255)
+    issued_date: Optional[date] = None
+    expiry_date: Optional[date] = None
+    note: Optional[str] = None
+
+
+class AuthorizationOut(ORMModel):
+    id: int
+    employee_id: int
+    name: str
+    issued_date: Optional[date] = None
+    expiry_date: Optional[date] = None
+    note: Optional[str] = None
 
 
 class EmployeeOut(ORMModel):
@@ -63,3 +100,7 @@ class EmployeeOut(ORMModel):
     status: str
     comment: Optional[str] = None
     is_active: bool
+    eb_group: Optional[str] = None
+    eb_exam_date: Optional[date] = None
+    eb_next_exam_date: Optional[date] = None
+    authorizations: List[AuthorizationOut] = []
