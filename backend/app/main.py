@@ -61,6 +61,24 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def frame_ancestors_header(request, call_next):
+    """Allow only the platform to embed SIZ in an iframe.
+
+    Sets `Content-Security-Policy: frame-ancestors 'self' <platform>` on EVERY
+    response — including the SPA's index.html and static assets, which is the
+    document actually loaded in the iframe (not just /api). Only the
+    frame-ancestors directive is set, so nothing else in the app's loading is
+    affected. Any legacy X-Frame-Options is dropped (it can't list a domain and
+    frame-ancestors supersedes it). This is headers only — auth is untouched.
+    """
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = f"frame-ancestors 'self' {settings.PLATFORM_ORIGIN}"
+    if "x-frame-options" in response.headers:
+        del response.headers["X-Frame-Options"]
+    return response
+
+
 def _wait_for_db(max_attempts: int = 15, delay_seconds: float = 3.0) -> None:
     """Block until the database accepts a connection, retrying on failure.
 

@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # public client → token carries azp == web-desktop (aud is usually "account").
     KEYCLOAK_AZP: str = "web-desktop"
 
+    # Origin of the platform allowed to embed SIZ in an iframe (CSP
+    # frame-ancestors). Not gated by PLATFORM_SSO — it is only a response header.
+    PLATFORM_ORIGIN: str = "https://sue-system-ashinoff.amvera.io"
+
     @property
     def cors_origins_list(self) -> List[str]:
         if self.CORS_ORIGINS.strip() == "*":

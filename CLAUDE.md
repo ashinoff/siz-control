@@ -253,5 +253,12 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     чтобы не редиректить на /login при неуспехе), хранит `siz_token` как обычно.
     В iframe показывается «Вход через платформу…» (`ssoPending`), при неуспехе/
     таймауте 5с — обычная форма входа (fallback). Cookie не используются.
-  - Осталось (шаги 5–6): CSP `frame-ancestors`/снять X-Frame-Options и конфиг
-    платформы `VITE_APP_SIZ_URL` — не сделаны.
+  - Встраивание в iframe (шаг 5): HTTP-middleware в `main.py` ставит на КАЖДЫЙ
+    ответ (в т.ч. index.html/статику, не только /api) заголовок
+    `Content-Security-Policy: frame-ancestors 'self' <PLATFORM_ORIGIN>` и снимает
+    `X-Frame-Options`, если он вдруг есть. `PLATFORM_ORIGIN` — в `config.py`
+    (default `https://sue-system-ashinoff.amvera.io`). Только директива
+    frame-ancestors (не ломать скрипты/стили). Не за флагом (это лишь заголовок,
+    авторизацию не трогает). Раздача — один контейнер (uvicorn отдаёт API+фронт),
+    nginx нет. NB: у starlette `MutableHeaders` нет `.pop()` — удалять через `del`.
+  - Осталось (шаг 6): конфиг платформы `VITE_APP_SIZ_URL` — на стороне SUE_system.
