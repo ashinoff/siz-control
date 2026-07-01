@@ -29,9 +29,10 @@ RES_CODE_ALIASES: dict = {}
 
 
 class _RoleView:
-    """Minimal stand-in for the ORM Role (only .code / .name are read)."""
+    """Minimal stand-in for the ORM Role (id kept so UserOut can serialize)."""
 
     def __init__(self, code: str):
+        self.id = 0
         self.code = code
         self.name = code
 
@@ -89,6 +90,10 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Учетная запись заблокирована"
         )
+    # A SIZ session minted from a platform token (step 4) carries the token's
+    # internal role + department, so honour those instead of the DB row's.
+    if payload.get("platform"):
+        return PlatformUser(user, payload.get("role") or None, payload.get("dept"))
     return user
 
 

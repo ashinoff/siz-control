@@ -13,11 +13,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// On 401, clear the session and bounce to login.
+// On 401, clear the session and bounce to login. Requests may opt out of the
+// redirect with `skipAuthRedirect` (e.g. the platform-token exchange, which
+// handles failure gracefully by falling back to the normal login).
 api.interceptors.response.use(
   (resp) => resp,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response && error.response.status === 401 && !error.config?.skipAuthRedirect) {
       const onLogin = window.location.pathname === "/login";
       localStorage.removeItem("siz_token");
       if (!onLogin) {

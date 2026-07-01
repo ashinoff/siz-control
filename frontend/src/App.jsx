@@ -30,8 +30,20 @@ import DbCheck from "./pages/DbCheck.jsx";
 import Trash from "./pages/Trash.jsx";
 import Documents from "./pages/Documents.jsx";
 
+function SsoLoading() {
+  return (
+    <div className="login-wrap">
+      <div className="login-card" style={{ textAlign: "center" }}>
+        <Spinner />
+        <div style={{ marginTop: 12, color: "var(--text-muted)" }}>Вход через платформу…</div>
+      </div>
+    </div>
+  );
+}
+
 function Protected({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading, ssoPending } = useAuth();
+  if (ssoPending) return <SsoLoading />;
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
@@ -46,13 +58,15 @@ function RoleGuard({ allow, children }) {
 const PRIV = ["admin", "lab", "sue"];
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, ssoPending } = useAuth();
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={loading ? <Spinner /> : user ? <Navigate to="/" replace /> : <Login />}
+        element={
+          ssoPending ? <SsoLoading /> : loading ? <Spinner /> : user ? <Navigate to="/" replace /> : <Login />
+        }
       />
       <Route
         element={

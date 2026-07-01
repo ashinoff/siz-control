@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_platform_user
 from ..models.user import User
 from ..schemas.user import PasswordChange, Token, UserOut
 from ..security import create_access_token, hash_password, verify_password
@@ -37,6 +37,37 @@ def login(
         action="login",
         entity_type="user",
         entity_id=user.id,
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+    return Token(access_token=token)
+
+
+@router.post("/platform", response_model=Token)
+def platform_login(
+    request: Request,
+    current=Depends(get_platform_user),
+    db: Session = Depends(get_db),
+):
+    """Exchange a Keycloak platform token for a native SIZ session (step 4).
+
+    ``get_platform_user`` verifies the Keycloak token and maps roles/РЭС
+    (steps 1-3); it also enforces the PLATFORM_SSO flag (401 when OFF) and
+    returns 401/403 on invalid/forbidden. The issued SIZ JWT is identical in
+    shape to a password login, but carries the token-derived role + department
+    (marked ``platform``) so later requests keep that authorization.
+    """
+    role_c = current.role.code if current.role else ""
+    token = create_access_token(
+        subject=current.id,
+        extra={"platform": True, "role": role_c, "dept": current.department_id},
+    )
+    log_audit(
+        db,
+        user_id=current.id,
+        action="login_platform",
+        entity_type="user",
+        entity_id=current.id,
         ip_address=request.client.host if request.client else None,
     )
     db.commit()

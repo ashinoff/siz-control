@@ -240,5 +240,18 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     — не полагаться на `scoped_department_id` возвращающий None при пустом РЭС).
     Возвращается duck-typed `PlatformUser` (`.id`, `.role.code`,
     `.department_id`, …), совместимый с существующими проверками прав.
-  - Зависимость пока НИ К ЧЕМУ не подключена (шаги 4–6 — приём токена на фронте
-    и своя сессия, iframe/CSP, конфиг платформы — не сделаны).
+  - Обмен на свою сессию (шаг 4): `POST /api/auth/platform` — принимает
+    Keycloak-токен в `Authorization: Bearer`, прогоняет через `get_platform_user`
+    (шаги 1–3) и выдаёт ОБЫЧНЫЙ сессионный JWT СИЗ, но с claim'ами
+    `platform/role/dept`. `get_current_user` при `platform=True` отдаёт
+    `PlatformUser` с ролью/подразделением ИЗ ТОКЕНА (а не из строки БД), поэтому
+    последующие запросы держат ту же авторизацию. Обычный логин (без `platform`)
+    не изменён. При `PLATFORM_SSO=OFF` эндпоинт отдаёт 401 (выключен).
+  - Фронт (шаг 4): `AuthContext` слушает `window 'message'`, принимает ТОЛЬКО с
+    `VITE_PLATFORM_ORIGIN` (default `https://sue-system-ashinoff.amvera.io`) и
+    `type==='platform-auth'`, меняет токен на свою сессию (`skipAuthRedirect`,
+    чтобы не редиректить на /login при неуспехе), хранит `siz_token` как обычно.
+    В iframe показывается «Вход через платформу…» (`ssoPending`), при неуспехе/
+    таймауте 5с — обычная форма входа (fallback). Cookie не используются.
+  - Осталось (шаги 5–6): CSP `frame-ancestors`/снять X-Frame-Options и конфиг
+    платформы `VITE_APP_SIZ_URL` — не сделаны.
