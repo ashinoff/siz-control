@@ -90,4 +90,37 @@ def identity_from_claims(claims: dict) -> dict:
         "keycloak_id": claims.get("sub"),
         "email": claims.get("email"),
         "roles": (claims.get("realm_access") or {}).get("roles", []),
+        # Код РЭС для res_user (кладётся платформой/Keycloak в токен).
+        "res": claims.get("res"),
     }
+
+
+# ── Role mapping (platform SSO → внутренние роли СИЗ) ──────────────────────
+# Realm-роли приезжают с префиксом "siz-". Маппинг на внутренние роли СИЗ.
+KEYCLOAK_ROLE_MAP = {
+    "siz-admin": "admin",
+    "siz-lab": "lab",
+    "siz-sue": "sue",
+    "siz-res": "res_user",
+}
+# "siz-user" — только право открыть приложение, без внутренней функции.
+SIZ_ACCESS_ROLE = "siz-user"
+# По убыванию полномочий: admin > sue > lab > res_user.
+_ROLE_PRIORITY = ("admin", "sue", "lab", "res_user")
+
+
+def has_siz_access(roles) -> bool:
+    """True, если в токене есть ЛЮБАЯ siz-роль (доступ или функциональная)."""
+    return SIZ_ACCESS_ROLE in roles or any(r in KEYCLOAK_ROLE_MAP for r in roles)
+
+
+def internal_role(roles) -> Optional[str]:
+    """Самая полномочная внутренняя роль СИЗ из токена, либо None.
+
+    None — когда функциональной роли нет (например, только ``siz-user``).
+    """
+    mapped = {KEYCLOAK_ROLE_MAP[r] for r in roles if r in KEYCLOAK_ROLE_MAP}
+    for role in _ROLE_PRIORITY:
+        if role in mapped:
+            return role
+    return None

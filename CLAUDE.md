@@ -220,14 +220,25 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
   Список видов допусков для выпадашки — `frontend/src/lib/otRights.js`
   (дополнять там; в карточке есть «Другое (вписать)» для отсутствующих).
 - **Платформенный SSO (Keycloak)** — за флагом `PLATFORM_SSO` (env, default OFF;
-  при OFF ничего не меняется, старый логин/пароль работает). Сделаны только
-  шаги 1–2 из `PLATFORM_SSO_INTEGRATION.md`: `services/keycloak.py`
-  (проверка Keycloak JWT по JWKS: подпись, `iss`, `exp`, `azp==web-desktop`;
-  aud НЕ проверяем; JWKS кэшируется; токен не логируем) и зависимость
-  `get_platform_user` в `dependencies.py` (привязка к локальному `User` по
-  `keycloak_id`, затем разово по `email`; иначе 401; авто-создания нет).
-  Колонки `User.email` и `User.keycloak_id` — nullable, доезжают через
-  `schema_sync`; уникальный индекс `ix_users_keycloak_id` создаётся в
-  `on_startup` только при `PLATFORM_SSO=ON` (schema_sync не умеет индексы).
-  Зависимость пока НИ К ЧЕМУ не подключена (шаги 3–6 — маппинг ролей, приём
-  токена на фронте, iframe/CSP, конфиг — не сделаны).
+  при OFF ничего не меняется, старый логин/пароль работает). Сделаны шаги 1–3 из
+  `PLATFORM_SSO_INTEGRATION.md`: `services/keycloak.py` (проверка Keycloak JWT по
+  JWKS: подпись, `iss`, `exp`, `azp==web-desktop`; aud НЕ проверяем; JWKS
+  кэшируется; токен не логируем; + маппинг ролей) и зависимость
+  `get_platform_user` в `dependencies.py`.
+  - Привязка (шаг 2): к локальному `User` по `keycloak_id`, затем разово по
+    `email`; нет учётки → 401; авто-создания нет. Колонки `User.email` и
+    `User.keycloak_id` — nullable, доезжают через `schema_sync`; уникальный
+    индекс `ix_users_keycloak_id` создаётся в `on_startup` только при ON.
+  - Роли/РЭС (шаг 3): realm-роли с префиксом `siz-` → внутренние
+    (`siz-admin→admin`, `siz-lab→lab`, `siz-sue→sue`, `siz-res→res_user`;
+    `siz-user` = только доступ, без функции). Несколько ролей → высшая
+    (admin>sue>lab>res_user). Нет ни одной siz-роли → **403** (не 401).
+    Для `res_user` подразделение берётся из claim `res` и матчится на
+    `Department.code` (регистронезависимо; словарь расхождений —
+    `RES_CODE_ALIASES` в `dependencies.py`). Нет/неизвестный `res` или только
+    `siz-user` → scope на `_NO_DEPARTMENT_SENTINEL=-1` (видит НИЧЕГО, а не «всё»
+    — не полагаться на `scoped_department_id` возвращающий None при пустом РЭС).
+    Возвращается duck-typed `PlatformUser` (`.id`, `.role.code`,
+    `.department_id`, …), совместимый с существующими проверками прав.
+  - Зависимость пока НИ К ЧЕМУ не подключена (шаги 4–6 — приём токена на фронте
+    и своя сессия, iframe/CSP, конфиг платформы — не сделаны).
