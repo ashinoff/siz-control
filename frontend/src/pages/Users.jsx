@@ -61,6 +61,7 @@ export default function Users() {
                 <tr>
                   <th>ФИО</th>
                   <th>Логин</th>
+                  <th>Эл. почта</th>
                   <th>Роль</th>
                   <th>Подразделение</th>
                   <th>Статус</th>
@@ -72,6 +73,7 @@ export default function Users() {
                   <tr key={u.id}>
                     <td className="cell-strong">{u.full_name}</td>
                     <td className="num">{u.login}</td>
+                    <td>{u.email || <span className="muted">—</span>}</td>
                     <td>
                       <Badge kind={u.role?.code === "admin" ? "badge-blue" : "badge-gray"} dot={false}>
                         {ROLE_LABEL[u.role?.code] || u.role?.name}
@@ -132,6 +134,7 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
     full_name: user.full_name || "",
     role_code: user.role?.code || "res_user",
     department_id: user.department?.id || "",
+    email: user.email || "",
   });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -148,6 +151,7 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
           full_name: form.full_name,
           role_code: form.role_code,
           department_id: needsDept && form.department_id ? Number(form.department_id) : null,
+          email: form.email.trim() || null,
         };
         if (form.password) payload.password = form.password;
         await api.put(`/api/users/${user.id}`, payload);
@@ -158,6 +162,7 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
           full_name: form.full_name,
           role_code: form.role_code,
           department_id: needsDept && form.department_id ? Number(form.department_id) : null,
+          email: form.email.trim() || null,
         });
       }
       onSaved();
@@ -212,6 +217,14 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
               </option>
             ))}
           </Select>
+        </Field>
+        <Field label="Эл. почта" hint="Для синхронизации с платформой (единый вход)">
+          <Input
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="user@example.com"
+          />
         </Field>
       </div>
     </Modal>
