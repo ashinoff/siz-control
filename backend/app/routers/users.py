@@ -52,6 +52,7 @@ def create_user(
         full_name=payload.full_name,
         role_id=role.id,
         department_id=payload.department_id,
+        email=payload.email or None,
     )
     db.add(user)
     db.flush()
@@ -83,6 +84,8 @@ def update_user(
         user.department_id = payload.department_id
     if payload.is_active is not None:
         user.is_active = payload.is_active
+    if payload.email is not None:
+        user.email = payload.email or None
 
     log_audit(db, user_id=admin.id, action="update_user", entity_type="user", entity_id=user.id)
     db.commit()

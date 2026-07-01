@@ -129,6 +129,19 @@ def on_startup() -> None:
     except Exception:
         logger.exception("Schema sync failed")
 
+    # Platform SSO: schema_sync only ADDs the column — it can't add the unique
+    # index. Ensure it here (only when the flag is on, so OFF changes nothing).
+    # Postgres allows multiple NULLs under a unique index → safe on existing rows.
+    if settings.PLATFORM_SSO:
+        from sqlalchemy import text as _sql_text
+        try:
+            with engine.begin() as conn:
+                conn.execute(_sql_text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_keycloak_id ON users (keycloak_id)"
+                ))
+        except Exception:
+            logger.exception("Could not ensure users.keycloak_id unique index")
+
     # Seed roles, departments, warehouses and admin user (idempotent).
     from .database import SessionLocal
     from .seed import seed_structural

@@ -46,7 +46,8 @@ backend/
                      export, norms, importdata, import_issued, dbcheck, trash,
                      documents, ot, backup
     schemas/         Pydantic-схемы запросов/ответов
-    services/        бизнес-логика: audit, reports, status, ot (охрана труда)
+    services/        бизнес-логика: audit, reports, status, ot (охрана труда),
+                     keycloak (проверка токена платформенного SSO)
   alembic/           миграции (на практике схема создаётся через create_all +
                      schema_sync — см. «Грабли»)
   requirements.txt
@@ -218,3 +219,15 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
   в сайдбаре отдельный (`otAlerts` в Layout/Sidebar, не путать с СИЗ `alerts`).
   Список видов допусков для выпадашки — `frontend/src/lib/otRights.js`
   (дополнять там; в карточке есть «Другое (вписать)» для отсутствующих).
+- **Платформенный SSO (Keycloak)** — за флагом `PLATFORM_SSO` (env, default OFF;
+  при OFF ничего не меняется, старый логин/пароль работает). Сделаны только
+  шаги 1–2 из `PLATFORM_SSO_INTEGRATION.md`: `services/keycloak.py`
+  (проверка Keycloak JWT по JWKS: подпись, `iss`, `exp`, `azp==web-desktop`;
+  aud НЕ проверяем; JWKS кэшируется; токен не логируем) и зависимость
+  `get_platform_user` в `dependencies.py` (привязка к локальному `User` по
+  `keycloak_id`, затем разово по `email`; иначе 401; авто-создания нет).
+  Колонки `User.email` и `User.keycloak_id` — nullable, доезжают через
+  `schema_sync`; уникальный индекс `ix_users_keycloak_id` создаётся в
+  `on_startup` только при `PLATFORM_SSO=ON` (schema_sync не умеет индексы).
+  Зависимость пока НИ К ЧЕМУ не подключена (шаги 3–6 — маппинг ролей, приём
+  токена на фронте, iframe/CSP, конфиг — не сделаны).

@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     # ephemeral, so for permanent storage use an external bucket (S3/Supabase).
     UPLOAD_DIR: str = "./uploads"
 
+    # ── Platform SSO (Keycloak) — feature-flagged, OFF by default ──────────
+    # When OFF nothing changes: the existing login/password flow is untouched.
+    PLATFORM_SSO: bool = False
+    KEYCLOAK_ISSUER: str = "https://keycloak-ashinoff.amvera.io/realms/platform"
+    KEYCLOAK_JWKS_URL: str = (
+        "https://keycloak-ashinoff.amvera.io/realms/platform/protocol/openid-connect/certs"
+    )
+    # public client → token carries azp == web-desktop (aud is usually "account").
+    KEYCLOAK_AZP: str = "web-desktop"
+
     @property
     def cors_origins_list(self) -> List[str]:
         if self.CORS_ORIGINS.strip() == "*":

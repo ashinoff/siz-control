@@ -28,5 +28,11 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # NULL for administrators (they are not bound to a single department).
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
 
+    # ── Platform SSO (Keycloak) — all nullable so schema_sync can add them
+    #    to the existing table on Amvera without touching data.
+    # Used to match/bind an account to a Keycloak identity (email one-time link).
+    email = Column(String(255), nullable=True, index=True)
+    keycloak_id = Column(String(255), unique=True, nullable=True, index=True)
+
     role = relationship("Role", back_populates="users")
     department = relationship("Department", back_populates="users")
