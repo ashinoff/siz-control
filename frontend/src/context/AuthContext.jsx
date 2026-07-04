@@ -19,6 +19,15 @@ export function AuthProvider({ children }) {
   const [ssoPending, setSsoPending] = useState(EMBEDDED);
 
   const loadMe = useCallback(async () => {
+    // Embedded in the platform iframe: never trust a stale localStorage session,
+    // require a fresh platform-token exchange instead (avoids showing the
+    // previous user before the new token arrives).
+    if (EMBEDDED) {
+      localStorage.removeItem("siz_token");
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     const token = localStorage.getItem("siz_token");
     if (!token) {
       setUser(null);
@@ -56,6 +65,11 @@ export function AuthProvider({ children }) {
         setUser(me.data);
         return true;
       } catch {
+        // In the iframe, clear the session so a previous user doesn't linger.
+        if (EMBEDDED) {
+          localStorage.removeItem("siz_token");
+          setUser(null);
+        }
         return false; // fall back to the normal login form
       } finally {
         setSsoPending(false);
@@ -72,6 +86,11 @@ export function AuthProvider({ children }) {
       exchangePlatformToken(data.token);
     };
     window.addEventListener("message", onMessage);
+    // Tell the platform we're ready to receive the token — closes the race
+    // where the platform posts the token before this listener is attached.
+    if (EMBEDDED) {
+      window.parent.postMessage({ type: "siz-ready" }, PLATFORM_ORIGIN);
+    }
     // If embedded but no platform message arrives, stop waiting after a bit and
     // reveal the normal login (fallback).
     const timer = EMBEDDED ? setTimeout(() => setSsoPending(false), 5000) : null;
