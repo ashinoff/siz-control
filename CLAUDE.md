@@ -223,30 +223,30 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
   при OFF ничего не меняется, старый логин/пароль работает). Сделаны шаги 1–3 из
   `PLATFORM_SSO_INTEGRATION.md`: `services/keycloak.py` (проверка Keycloak JWT по
   JWKS: подпись, `iss`, `exp`, `azp==web-desktop`; aud НЕ проверяем; JWKS
-  кэшируется; токен не логируем; + маппинг ролей) и зависимость
+  кэшируется; токен не логируем) и зависимость
   `get_platform_user` в `dependencies.py`.
+  - **Модель прав (2026-07-08, как в Учёте ПУ):** Keycloak определяет ТОЛЬКО
+    личность (email) и право входа — **единственная realm-роль `siz-user`**.
+    Функциональная роль (`admin/lab/sue/res_user`) и подразделение (РЭС) берутся
+    из УЧЁТКИ СИЗ, а не из токена. Никакого маппинга `siz-admin/...` и claim
+    `res` больше нет (удалены `KEYCLOAK_ROLE_MAP`, `internal_role`, `res`,
+    `_department_id_for_res`, `RES_CODE_ALIASES`, `_NO_DEPARTMENT_SENTINEL`).
   - Привязка (шаг 2): к локальному `User` по `keycloak_id`, затем разово по
-    `email`; нет учётки → 401; авто-создания нет. Колонки `User.email` и
-    `User.keycloak_id` — nullable, доезжают через `schema_sync`; уникальный
-    индекс `ix_users_keycloak_id` создаётся в `on_startup` только при ON.
-  - Роли/РЭС (шаг 3): realm-роли с префиксом `siz-` → внутренние
-    (`siz-admin→admin`, `siz-lab→lab`, `siz-sue→sue`, `siz-res→res_user`;
-    `siz-user` = только доступ, без функции). Несколько ролей → высшая
-    (admin>sue>lab>res_user). Нет ни одной siz-роли → **403** (не 401).
-    Для `res_user` подразделение берётся из claim `res` и матчится на
-    `Department.code` (регистронезависимо; словарь расхождений —
-    `RES_CODE_ALIASES` в `dependencies.py`). Нет/неизвестный `res` или только
-    `siz-user` → scope на `_NO_DEPARTMENT_SENTINEL=-1` (видит НИЧЕГО, а не «всё»
-    — не полагаться на `scoped_department_id` возвращающий None при пустом РЭС).
-    Возвращается duck-typed `PlatformUser` (`.id`, `.role.code`,
-    `.department_id`, …), совместимый с существующими проверками прав.
+    `email` (регистронезависимо); нет учётки → 401; авто-создания нет. Колонки
+    `User.email` и `User.keycloak_id` — nullable, доезжают через `schema_sync`;
+    уникальный индекс `ix_users_keycloak_id` создаётся в `on_startup` только при ON.
+  - Доступ + права (шаг 3): нет роли `siz-user` в токене → **403** (не 401).
+    Роль и `department_id` читаются из строки БД (`user.role.code`,
+    `user.department_id`). Возвращается duck-typed `PlatformUser` (`.id`,
+    `.role.code`, `.department_id`, …), совместимый с существующими проверками прав.
+    Управлять ролью/РЭС/email пользователя — экран «Пользователи» (форма уже с
+    полями email/роль/подразделение; для `res_user` подразделение обязательно).
   - Обмен на свою сессию (шаг 4): `POST /api/auth/platform` — принимает
     Keycloak-токен в `Authorization: Bearer`, прогоняет через `get_platform_user`
-    (шаги 1–3) и выдаёт ОБЫЧНЫЙ сессионный JWT СИЗ, но с claim'ами
-    `platform/role/dept`. `get_current_user` при `platform=True` отдаёт
-    `PlatformUser` с ролью/подразделением ИЗ ТОКЕНА (а не из строки БД), поэтому
-    последующие запросы держат ту же авторизацию. Обычный логин (без `platform`)
-    не изменён. При `PLATFORM_SSO=OFF` эндпоинт отдаёт 401 (выключен).
+    (шаги 1–3) и выдаёт ОБЫЧНЫЙ сессионный JWT СИЗ с claim'ами
+    `platform/role/dept` (роль/dept уже из БД). `get_current_user` при
+    `platform=True` отдаёт `PlatformUser` с этими значениями. Обычный логин (без
+    `platform`) не изменён. При `PLATFORM_SSO=OFF` эндпоинт отдаёт 401 (выключен).
   - Фронт (шаг 4): `AuthContext` слушает `window 'message'`, принимает ТОЛЬКО с
     `VITE_PLATFORM_ORIGIN` (default `https://sue-system-ashinoff.amvera.io`) и
     `type==='platform-auth'`, меняет токен на свою сессию (`skipAuthRedirect`,
