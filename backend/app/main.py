@@ -35,6 +35,7 @@ from .routers import (
     norms,
     operations,
     ot,
+    platform,
     reports,
     trash,
     users,
@@ -52,9 +53,15 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Origin платформы должен быть разрешён — она кросс-доменно дёргает
+# /api/platform/badge с заголовком Authorization.
+_cors_origins = settings.cors_origins_list
+if "*" not in _cors_origins and settings.PLATFORM_ORIGIN not in _cors_origins:
+    _cors_origins = [*_cors_origins, settings.PLATFORM_ORIGIN]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -200,6 +207,7 @@ app.include_router(dbcheck.router)
 app.include_router(trash.router)
 app.include_router(documents.router)
 app.include_router(ot.router)
+app.include_router(platform.router)
 
 
 # Serve frontend static build -----------------------------------------------
