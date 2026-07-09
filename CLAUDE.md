@@ -262,3 +262,12 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     авторизацию не трогает). Раздача — один контейнер (uvicorn отдаёт API+фронт),
     nginx нет. NB: у starlette `MutableHeaders` нет `.pop()` — удалять через `del`.
   - Осталось (шаг 6): конфиг платформы `VITE_APP_SIZ_URL` — на стороне SUE_system.
+  - **Бейдж уведомлений (2026-07-09):** `GET /api/platform/badge` (новый
+    `routers/platform.py`). Проверка Keycloak-токена как в `/auth/platform`, но
+    БЕЗ создания сессии и без записи (только чтение): 401 при выкл. SSO/невалидном
+    токене; учётка по `keycloak_id`→`email`; не найден/неактивен → `{"count":0}`.
+    `count` = позиции СИЗ с истекающим/просроченным сроком службы ИЛИ поверки
+    (та же логика, что `alert_items` в `/api/dashboard`, в qty) + сроки ОТ
+    (`ot_service.deadlines` → `expiring`+`expired`), scope по подразделению как у
+    роли (res_user — своё, admin/lab/sue — все). CORS: `PLATFORM_ORIGIN` добавлен
+    в `allow_origins` (list из env, не `*`). Коммит `d8e1563`.
