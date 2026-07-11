@@ -272,3 +272,13 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     (`ot_service.deadlines` → `expiring`+`expired`), scope по подразделению как у
     роли (res_user — своё, admin/lab/sue — все). CORS: `PLATFORM_ORIGIN` добавлен
     в `allow_origins` (list из env, не `*`). Коммит `d8e1563`.
+
+## Журнал изменений (Claude Code ведёт сам)
+- **2026-07-11** — Админ может менять `login` учётки. Схема `UserUpdate` получила
+  `login: Optional[str]` (3–120); `update_user` (`routers/users.py`) меняет
+  `login` с проверкой уникальности (`User.id != user_id` → 400 «Логин уже занят»).
+  Фронт (`pages/Users.jsx`): у поля «Логин» снят `disabled={isEdit}`, `login`
+  добавлен в edit-payload, `valid` теперь требует логин всегда (пароль — только
+  при создании). Удаления пользователя в СИЗ НЕТ (только `block`/`unblock`), поэтому
+  FK-чистки не требуется. Цель — унификация логинов между приложениями (доступ/роль
+  платформа определяет по email). Коммит `6b7e82c`.
