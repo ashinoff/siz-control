@@ -252,7 +252,8 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     `type==='platform-auth'`, меняет токен на свою сессию (`skipAuthRedirect`,
     чтобы не редиректить на /login при неуспехе), хранит `siz_token` как обычно.
     В iframe показывается «Вход через платформу…» (`ssoPending`), при неуспехе/
-    таймауте 5с — обычная форма входа (fallback). Cookie не используются.
+    таймауте 5с — в iframe экран «Нет доступа» (`AccessDenied`, обратиться к
+    администратору), вне iframe — обычная форма входа. Cookie не используются.
   - Встраивание в iframe (шаг 5): HTTP-middleware в `main.py` ставит на КАЖДЫЙ
     ответ (в т.ч. index.html/статику, не только /api) заголовок
     `Content-Security-Policy: frame-ancestors 'self' <PLATFORM_ORIGIN>` и снимает
