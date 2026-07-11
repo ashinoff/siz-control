@@ -148,6 +148,7 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
     try {
       if (isEdit) {
         const payload = {
+          login: form.login,
           full_name: form.full_name,
           role_code: form.role_code,
           department_id: needsDept && form.department_id ? Number(form.department_id) : null,
@@ -173,7 +174,7 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
     }
   };
 
-  const valid = form.full_name && form.role_code && (isEdit || (form.login && form.password)) && (!needsDept || form.department_id);
+  const valid = form.full_name && form.role_code && form.login && (isEdit || form.password) && (!needsDept || form.department_id);
 
   return (
     <Modal
@@ -193,8 +194,8 @@ function UserModal({ user, roles, departments, onClose, onSaved }) {
         <Field label="ФИО" required>
           <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
         </Field>
-        <Field label="Логин" required={!isEdit}>
-          <Input value={form.login} onChange={(e) => set("login", e.target.value)} disabled={isEdit} />
+        <Field label="Логин" required>
+          <Input value={form.login} onChange={(e) => set("login", e.target.value)} />
         </Field>
         <Field label={isEdit ? "Новый пароль" : "Пароль"} required={!isEdit} hint={isEdit ? "Оставьте пустым, чтобы не менять" : "Минимум 4 символа"}>
           <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} />

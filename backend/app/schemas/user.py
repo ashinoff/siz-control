@@ -43,6 +43,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    login: Optional[str] = Field(default=None, min_length=3, max_length=120)
     full_name: Optional[str] = None
     password: Optional[str] = Field(default=None, min_length=4, max_length=255)
     role_code: Optional[str] = None

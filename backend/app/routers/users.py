@@ -74,6 +74,12 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
+    # Логин можно менять, но он уникален — проверяем занятость другим пользователем.
+    if payload.login is not None and payload.login != user.login:
+        taken = db.query(User).filter(User.login == payload.login, User.id != user_id).first()
+        if taken:
+            raise HTTPException(status_code=400, detail="Логин уже занят")
+        user.login = payload.login
     if payload.full_name is not None:
         user.full_name = payload.full_name
     if payload.password:
