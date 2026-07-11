@@ -30,12 +30,29 @@ import DbCheck from "./pages/DbCheck.jsx";
 import Trash from "./pages/Trash.jsx";
 import Documents from "./pages/Documents.jsx";
 
+// В iframe платформы не показываем свою форму логина — при отказе «Нет доступа».
+const EMBEDDED = typeof window !== "undefined" && window.self !== window.top;
+
 function SsoLoading() {
   return (
     <div className="login-wrap">
       <div className="login-card" style={{ textAlign: "center" }}>
         <Spinner />
         <div style={{ marginTop: 12, color: "var(--text-muted)" }}>Вход через платформу…</div>
+      </div>
+    </div>
+  );
+}
+
+function AccessDenied() {
+  return (
+    <div className="login-wrap">
+      <div className="login-card" style={{ textAlign: "center" }}>
+        <h2>Нет доступа</h2>
+        <div style={{ marginTop: 10, color: "var(--text-muted)" }}>
+          У вашей учётной записи нет доступа к этому приложению.<br />
+          Обратитесь к администратору.
+        </div>
       </div>
     </div>
   );
@@ -65,7 +82,7 @@ export default function App() {
       <Route
         path="/login"
         element={
-          ssoPending ? <SsoLoading /> : loading ? <Spinner /> : user ? <Navigate to="/" replace /> : <Login />
+          ssoPending ? <SsoLoading /> : loading ? <Spinner /> : user ? <Navigate to="/" replace /> : EMBEDDED ? <AccessDenied /> : <Login />
         }
       />
       <Route
