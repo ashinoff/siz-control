@@ -19,6 +19,7 @@ from .database import Base, engine
 # Import models so that they are registered on Base.metadata before create_all.
 from . import models  # noqa: F401
 from .routers import (
+    analytics,
     auth,
     backup,
     catalog,
@@ -198,6 +199,7 @@ app.include_router(inventory.router)
 app.include_router(operations.router)
 app.include_router(reports.router)
 app.include_router(dashboard.router)
+app.include_router(analytics.router)
 app.include_router(journal.router)
 app.include_router(export.router)
 app.include_router(norms.router)

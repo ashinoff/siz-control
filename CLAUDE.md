@@ -274,6 +274,16 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     в `allow_origins` (list из env, не `*`). Коммит `d8e1563`.
 
 ## Журнал изменений (Claude Code ведёт сам)
+- **2026-07-14** — Новое меню **«Наличие»** (Аналитика) — «что у кого фактически
+  есть», обратное укомплектованности ТОН (та показывает, чего НЕ хватает; ТОН не
+  тронут). Бэкенд: `routers/analytics.py` → `GET /api/analytics/holdings` (фильтры
+  item_type/department_id/category_id/subcategory_id/catalog_item_id/state/search,
+  скоуп через `scoped_department_id`, агрегаты by_category/by_department/by_item/
+  by_type + строки; `state`=issued|in_stock|all). Зарегистрирован в `main.py`.
+  Фронт: `pages/Holdings.jsx` (фильтры + recharts: подразделения/категории/топ
+  позиций/типы + таблица + экспорт Excel), маршрут `/holdings` в `App.jsx`, пункт
+  меню в `Sidebar.jsx` (секция «Аналитика», `IconChartBar`). Пример: фильтр по
+  ноутбукам → видно, у кого они. Проверено TestClient'ом (эндпоинт 200, структура).
 - **2026-07-11** — Админ может менять `login` учётки. Схема `UserUpdate` получила
   `login: Optional[str]` (3–120); `update_user` (`routers/users.py`) меняет
   `login` с проверкой уникальности (`User.id != user_id` → 400 «Логин уже занят»).

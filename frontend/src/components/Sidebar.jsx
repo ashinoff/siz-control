@@ -61,6 +61,12 @@ const SECTIONS = [
     ],
   },
   {
+    label: "Аналитика",
+    items: [
+      { to: "/holdings", icon: IconChartBar, label: "Наличие" },
+    ],
+  },
+  {
     label: "Контроль",
     items: [
       { to: "/deadlines", icon: IconClock, label: "Контроль сроков", alertKey: true, neon: true },
