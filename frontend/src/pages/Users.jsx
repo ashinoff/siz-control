@@ -69,7 +69,7 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {[...users].sort((a, b) => (a.full_name || "").localeCompare(b.full_name || "", "ru")).map((u) => (
                   <tr key={u.id}>
                     <td className="cell-strong">{u.full_name}</td>
                     <td className="num">{u.login}</td>
