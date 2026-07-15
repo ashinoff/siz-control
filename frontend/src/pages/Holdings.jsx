@@ -1,34 +1,26 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
-} from "recharts";
 import api from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Badge, Spinner, EmptyState, Select, SearchBox } from "../components/ui.jsx";
-import { IconBox, IconDownload } from "../components/icons.jsx";
+import { IconBox, IconDownload, IconEdit } from "../components/icons.jsx";
+import InventoryForm from "../components/InventoryForm.jsx";
+import InventoryDetail from "../components/InventoryDetail.jsx";
 import exportExcel from "../lib/exportExcel.js";
 import { fmtDate } from "../lib/format.js";
 import PageHeading from "../components/PageHeading.jsx";
 
-const TYPE_COLORS = { ppe: "#2563a8", equipment: "#0e9488", material: "#9333a8" };
-const PALETTE = ["#2563a8", "#0e9488", "#9333a8", "#e8830c", "#3f7fe0", "#0891b2", "#7c3aed", "#dc2626", "#16a34a", "#ca8a04"];
 const DL_BADGE = { in_date: "badge-green", expiring: "badge-amber", expired: "badge-red" };
 const DL_LABEL = { in_date: "В сроке", expiring: "Истекает", expired: "Просрочен" };
 
-function ChartCard({ title, children }) {
-  return (
-    <div className="card" style={{ padding: 16 }}>
-      <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>{title}</div>
-      <div style={{ height: 260 }}>{children}</div>
-    </div>
-  );
-}
-
 export default function Holdings() {
-  const { isPrivileged } = useAuth();
+  const { isPrivileged, isAdmin, roleCode } = useAuth();
+  // Править карточку выданного имущества может только админ или лаборатория.
+  const canEdit = isAdmin || roleCode === "lab";
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   const [departments, setDepartments] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -41,12 +33,15 @@ export default function Holdings() {
   const [subcategoryId, setSubcategoryId] = useState("");
   const [search, setSearch] = useState("");
 
+  // Карточка (просмотр) и форма правки
+  const [detailId, setDetailId] = useState(null);
+  const [editItem, setEditItem] = useState(null);
+
   useEffect(() => {
     api.get("/api/departments").then(({ data }) => setDepartments(data));
     api.get("/api/catalog/subcategories").then(({ data }) => setSubcategories(data));
   }, []);
 
-  // категории зависят от выбранного типа
   useEffect(() => {
     const params = itemType ? { item_type: itemType } : {};
     api.get("/api/catalog/categories", { params }).then(({ data }) => setCategories(data));
@@ -72,9 +67,18 @@ export default function Holdings() {
         .finally(() => setLoading(false));
     }, 250);
     return () => clearTimeout(t);
-  }, [state, itemType, departmentId, categoryId, subcategoryId, search]);
+  }, [state, itemType, departmentId, categoryId, subcategoryId, search, reloadTick]);
 
   const rows = data?.rows || [];
+
+  const openEdit = async (id) => {
+    try {
+      const { data } = await api.get(`/api/inventory/${id}`);
+      setEditItem(data);
+    } catch {
+      /* нет доступа/не найдено — просто не открываем */
+    }
+  };
 
   const doExport = async () => {
     setExporting(true);
@@ -149,58 +153,6 @@ export default function Holdings() {
         </div>
       )}
 
-      {data && rows.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }} className="holdings-charts">
-          <ChartCard title="По подразделениям (единиц)">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.by_department.slice(0, 12)} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="qty" name="Единиц" radius={[6, 6, 0, 0]}>
-                  {data.by_department.slice(0, 12).map((d, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="По категориям">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Tooltip />
-                <Pie data={data.by_category.slice(0, 8)} dataKey="qty" nameKey="name" outerRadius={95} label={(e) => e.name}>
-                  {data.by_category.slice(0, 8).map((d, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Топ позиций (единиц)">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.by_item.slice(0, 10)} layout="vertical" margin={{ top: 4, right: 12, left: 8, bottom: 0 }}>
-                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={150} />
-                <Tooltip />
-                <Bar dataKey="qty" name="Единиц" radius={[0, 6, 6, 0]} fill="#2563a8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="По типам">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.by_type} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="qty" name="Единиц" radius={[6, 6, 0, 0]}>
-                  {data.by_type.map((d, i) => <Cell key={i} fill={TYPE_COLORS[d.key] || "#2563a8"} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-      )}
-
       <div className="card">
         {loading ? (
           <Spinner />
@@ -220,6 +172,7 @@ export default function Holdings() {
                   <th style={{ textAlign: "center" }}>Кол-во</th>
                   <th>Выдано</th>
                   <th>Срок</th>
+                  {canEdit && <th></th>}
                 </tr>
               </thead>
               <tbody>
@@ -228,12 +181,28 @@ export default function Holdings() {
                     <td className="cell-strong">{r.employee || <span className="muted">склад</span>}</td>
                     <td className="muted">{r.position || "—"}</td>
                     <td className="muted">{r.department}</td>
-                    <td>{r.name}{r.brand_model ? <span className="text-muted" style={{ fontSize: 12 }}> · {r.brand_model}</span> : null}</td>
+                    <td>
+                      <span
+                        onClick={() => setDetailId(r.id)}
+                        title="Открыть карточку"
+                        style={{ cursor: "pointer", color: "var(--accent, #2563a8)", fontWeight: 500, textDecoration: "underline", textUnderlineOffset: 2 }}
+                      >
+                        {r.name}
+                      </span>
+                      {r.brand_model ? <span className="text-muted" style={{ fontSize: 12 }}> · {r.brand_model}</span> : null}
+                    </td>
                     <td className="muted">{r.category}{r.subcategory ? ` / ${r.subcategory}` : ""}</td>
                     <td className="num">{r.inventory_number || r.serial_number || "—"}</td>
                     <td style={{ textAlign: "center" }}>{r.quantity}</td>
                     <td>{r.date_issued ? fmtDate(r.date_issued) : "—"}</td>
                     <td>{DL_BADGE[r.deadline_status] ? <Badge kind={DL_BADGE[r.deadline_status]}>{DL_LABEL[r.deadline_status]}</Badge> : "—"}</td>
+                    {canEdit && (
+                      <td>
+                        <button className="btn btn-icon btn-ghost" title="Корректировать карточку" onClick={() => openEdit(r.id)}>
+                          <IconEdit size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -246,6 +215,17 @@ export default function Holdings() {
           </div>
         )}
       </div>
+
+      {/* Карточка позиции (просмотр) */}
+      <InventoryDetail open={!!detailId} itemId={detailId} onClose={() => setDetailId(null)} />
+
+      {/* Правка карточки выданного имущества (админ / лаборатория) */}
+      <InventoryForm
+        open={!!editItem}
+        editItem={editItem}
+        onClose={() => setEditItem(null)}
+        onSaved={() => { setEditItem(null); setReloadTick((t) => t + 1); }}
+      />
     </div>
   );
 }

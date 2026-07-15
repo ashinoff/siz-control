@@ -113,6 +113,7 @@ def holdings(
         if len(rows) < limit:
             emp = it.current_employee
             rows.append({
+                "id": it.id,  # для перехода в карточку/правки инвентаря
                 "employee": emp.full_name if emp else None,
                 "position": (emp.position if emp else None) or "",
                 "department": dept,
