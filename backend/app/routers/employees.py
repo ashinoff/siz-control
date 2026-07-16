@@ -2,7 +2,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -13,6 +13,8 @@ from ..dependencies import (
     require_privileged,
     scoped_department_id,
 )
+from ..enums import InventoryStatus
+from ..models.inventory import InventoryItem
 from ..models.organization import Employee, EmployeeAuthorization
 from ..models.user import User
 from ..schemas.organization import (
@@ -51,7 +53,24 @@ def list_employees(
         query = query.filter(
             or_(Employee.full_name.ilike(like), Employee.personnel_number.ilike(like))
         )
-    return query.order_by(Employee.full_name).all()
+    employees = query.order_by(Employee.full_name).all()
+
+    # Кол-во выданных позиций на каждого сотрудника — одним групповым запросом.
+    if employees:
+        ids = [e.id for e in employees]
+        counts = dict(
+            db.query(InventoryItem.current_employee_id, func.count(InventoryItem.id))
+            .filter(
+                InventoryItem.current_employee_id.in_(ids),
+                InventoryItem.status == InventoryStatus.ISSUED.value,
+                InventoryItem.is_active.is_(True),
+            )
+            .group_by(InventoryItem.current_employee_id)
+            .all()
+        )
+        for e in employees:
+            e.issued_count = int(counts.get(e.id, 0))
+    return employees
 
 
 @router.get("/{employee_id}", response_model=EmployeeOut)

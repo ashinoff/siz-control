@@ -104,3 +104,4 @@ class EmployeeOut(ORMModel):
     eb_exam_date: Optional[date] = None
     eb_next_exam_date: Optional[date] = None
     authorizations: List[AuthorizationOut] = []
+    issued_count: int = 0  # кол-во выданных позиций (для бейджа в списке)

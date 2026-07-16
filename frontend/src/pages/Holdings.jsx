@@ -31,6 +31,8 @@ export default function Holdings() {
   const [departmentId, setDepartmentId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
+  const [catalogItemId, setCatalogItemId] = useState("");
+  const [catalogItems, setCatalogItems] = useState([]);
   const [search, setSearch] = useState("");
 
   // Карточка (просмотр) и форма правки
@@ -53,6 +55,16 @@ export default function Holdings() {
     [subcategories, categoryId],
   );
 
+  // Список конкретных позиций для фильтра по названию — реагирует на тип/категорию/подкатегорию.
+  useEffect(() => {
+    const params = {};
+    if (itemType) params.item_type = itemType;
+    if (categoryId) params.category_id = categoryId;
+    if (subcategoryId) params.subcategory_id = subcategoryId;
+    api.get("/api/catalog/items", { params }).then(({ data }) => setCatalogItems(data));
+    setCatalogItemId("");
+  }, [itemType, categoryId, subcategoryId]);
+
   useEffect(() => {
     setLoading(true);
     const params = { state };
@@ -60,6 +72,7 @@ export default function Holdings() {
     if (departmentId) params.department_id = departmentId;
     if (categoryId) params.category_id = categoryId;
     if (subcategoryId) params.subcategory_id = subcategoryId;
+    if (catalogItemId) params.catalog_item_id = catalogItemId;
     if (search.trim()) params.search = search.trim();
     const t = setTimeout(() => {
       api.get("/api/analytics/holdings", { params })
@@ -67,7 +80,7 @@ export default function Holdings() {
         .finally(() => setLoading(false));
     }, 250);
     return () => clearTimeout(t);
-  }, [state, itemType, departmentId, categoryId, subcategoryId, search, reloadTick]);
+  }, [state, itemType, departmentId, categoryId, subcategoryId, catalogItemId, search, reloadTick]);
 
   const rows = data?.rows || [];
 
@@ -141,6 +154,10 @@ export default function Holdings() {
         <Select value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} disabled={!subOptions.length}>
           <option value="">Все подкатегории</option>
           {subOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </Select>
+        <Select value={catalogItemId} onChange={(e) => setCatalogItemId(e.target.value)} disabled={!catalogItems.length} style={{ minWidth: 220 }}>
+          <option value="">Все наименования{catalogItems.length ? ` (${catalogItems.length})` : ""}</option>
+          {catalogItems.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </Select>
         <SearchBox value={search} onChange={setSearch} placeholder="Наименование, инв./сер. №" />
       </div>

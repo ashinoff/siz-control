@@ -209,6 +209,12 @@ export default function Employees() {
                             </button>
                           </>
                         )}
+                        <span
+                          className={`issued-count${e.issued_count ? "" : " issued-count--zero"}`}
+                          title="Всего выдано сотруднику"
+                        >
+                          {e.issued_count ?? 0}
+                        </span>
                       </div>
                     </td>
                   </tr>
