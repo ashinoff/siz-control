@@ -687,6 +687,7 @@ table.data thead th {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
+  z-index: 3;
   white-space: nowrap;
 }
 table.data tbody td {
@@ -720,6 +721,27 @@ table.data-bordered tbody td {
 }
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+/* Модалка «Выдано»: заголовок категории и шапка таблицы залипают; каждый
+   div-группы — контейнер для sticky, поэтому следующий заголовок при прокрутке
+   выталкивает предыдущий вверх. z-index держит их поверх контента. */
+.issued-group {
+  margin-bottom: 18px;
+}
+.issued-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--surface);
+  padding: 8px 0 6px;
+}
+.issued-group table.data thead th {
+  top: 42px;
+  z-index: 4;
 }
 
 /* ---------- Forms ---------- */

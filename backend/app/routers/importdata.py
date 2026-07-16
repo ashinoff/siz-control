@@ -108,6 +108,19 @@ def upload_import(
     categories_cache = {}
     catalog_cache = {}
 
+    # Авто-определение подкатегории по названию: если для позиции с таким же
+    # названием (тем же типом) подкатегория уже задана в справочнике — новые
+    # позиции при импорте её наследуют (в шаблоне столбца подкатегории нет).
+    subcat_by_name = {}
+    for c in db.query(CatalogItem).filter(
+        CatalogItem.is_active.is_(True),
+        CatalogItem.subcategory_id.isnot(None),
+    ).all():
+        if c.name:
+            subcat_by_name.setdefault(
+                (c.item_type, c.name.strip().lower()), (c.category_id, c.subcategory_id)
+            )
+
     created = 0
     skipped = 0
     errors: List[str] = []
@@ -206,6 +219,16 @@ def upload_import(
                 )
                 db.add(catalog_item)
                 db.flush()
+
+            # Наследуем подкатегорию по названию, если у позиции её ещё нет.
+            if not catalog_item.subcategory_id:
+                known = subcat_by_name.get((item_type, name.strip().lower()))
+                if known and (catalog_item.category_id in (None, known[0])):
+                    if catalog_item.category_id is None:
+                        catalog_item.category_id = known[0]
+                    catalog_item.subcategory_id = known[1]
+                    db.flush()
+
             catalog_cache[cache_key] = catalog_item
 
         # Duplicate check: same catalog + inv_number + serial_number + department

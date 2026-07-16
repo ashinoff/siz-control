@@ -294,8 +294,8 @@ function IssuedItemsModal({ employee, onClose }) {
         <EmptyState title="Сотруднику ничего не выдано" icon={<IconClipboard size={36} />} />
       ) : (
         groups.map(([category, list]) => (
-          <div key={category} style={{ marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 0 8px" }}>
+          <div key={category} className="issued-group">
+            <div className="issued-group-head">
               <h4 style={{ margin: 0 }}>{category}</h4>
               <Badge kind="badge-gray" dot={false}>{list.length}</Badge>
             </div>

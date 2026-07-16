@@ -202,7 +202,9 @@ def upload_issued_register(
         if not item_name:
             row_errors.append("Наименование не указано")
         cat_matches = cat_by_name.get(item_name.lower(), [])
-        catalog_item = cat_matches[0] if cat_matches else None
+        # Среди одноимённых позиций предпочитаем ту, где задана подкатегория.
+        catalog_item = next((c for c in cat_matches if c.subcategory_id), None) \
+            or (cat_matches[0] if cat_matches else None)
         if item_name and not catalog_item:
             row_errors.append(f"Номенклатура «{item_name}» не найдена в справочнике")
 
