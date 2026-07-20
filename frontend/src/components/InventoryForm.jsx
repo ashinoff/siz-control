@@ -33,11 +33,13 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(""); // catalog narrowing filter
+  const [subcategoryId, setSubcategoryId] = useState(""); // подкатегория (доп. фильтр позиции)
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setCategoryId("");
+    setSubcategoryId("");
     api.get("/api/catalog/items").then(({ data }) => setCatalog(data));
     api.get("/api/departments").then(({ data }) => setDepartments(data));
     api.get("/api/warehouses").then(({ data }) => setWarehouses(data));
@@ -91,10 +93,21 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
   }, [catalogByType]);
 
-  const catalogFiltered = useMemo(
-    () => (categoryId ? catalogByType.filter((c) => c.category_id === Number(categoryId)) : catalogByType),
-    [catalogByType, categoryId],
-  );
+  // Подкатегории, встречающиеся среди позиций выбранной категории (для доп. фильтра).
+  const subcategoryOptions = useMemo(() => {
+    if (!categoryId) return [];
+    const m = new Map();
+    for (const c of catalogByType) {
+      if (c.category_id === Number(categoryId) && c.subcategory?.id) m.set(c.subcategory.id, c.subcategory.name);
+    }
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
+  }, [catalogByType, categoryId]);
+
+  const catalogFiltered = useMemo(() => {
+    let list = categoryId ? catalogByType.filter((c) => c.category_id === Number(categoryId)) : catalogByType;
+    if (subcategoryId) list = list.filter((c) => c.subcategory_id === Number(subcategoryId));
+    return list;
+  }, [catalogByType, categoryId, subcategoryId]);
 
   const whFiltered = useMemo(() => {
     if (!form.department_owner_id) return warehouses;
@@ -171,11 +184,29 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             value={categoryId}
             onChange={(e) => {
               setCategoryId(e.target.value);
+              setSubcategoryId("");
               set("catalog_item_id", "");
             }}
           >
             <option value="">Все категории</option>
             {categoryOptions.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Подкатегория (фильтр)">
+          <Select
+            value={subcategoryId}
+            disabled={!categoryId || !subcategoryOptions.length}
+            onChange={(e) => {
+              setSubcategoryId(e.target.value);
+              set("catalog_item_id", "");
+            }}
+          >
+            <option value="">Все подкатегории</option>
+            {subcategoryOptions.map(([id, name]) => (
               <option key={id} value={id}>
                 {name}
               </option>
