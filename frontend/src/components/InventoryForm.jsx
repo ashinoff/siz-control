@@ -49,6 +49,9 @@ const empty = {
 
 export default function InventoryForm({ open, onClose, onSaved, editItem, defaultType }) {
   const isEdit = !!editItem;
+  // Предмет закреплён за сотрудником: место в этой форме не редактируем (перенос —
+  // через операции «Возврат»/«Перемещение»), показываем только у кого находится.
+  const isIssued = isEdit && (editItem?.status === "issued" || !!editItem?.current_employee_id);
   const [form, setForm] = useState(empty);
   const [catalog, setCatalog] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -343,12 +346,18 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             <Input value={editItem.department_owner?.name || ""} disabled />
           </Field>
         )}
-        <Field label="Склад / участок">
-          <Select value={form.current_warehouse_id} onChange={(e) => set("current_warehouse_id", e.target.value)}>
-            <option value="">— не на складе —</option>
-            {whFiltered.map((w) => (<option key={w.id} value={w.id}>{w.name}</option>))}
-          </Select>
-        </Field>
+        {isIssued ? (
+          <Field label="Находится у сотрудника" hint="Перенос — через операции «Возврат» и «Перемещение», не здесь.">
+            <Input value={editItem.current_employee?.full_name || "—"} disabled />
+          </Field>
+        ) : (
+          <Field label="Склад / участок">
+            <Select value={form.current_warehouse_id} onChange={(e) => set("current_warehouse_id", e.target.value)}>
+              <option value="">— не на складе —</option>
+              {whFiltered.map((w) => (<option key={w.id} value={w.id}>{w.name}</option>))}
+            </Select>
+          </Field>
+        )}
         <Field label="Кол-во">
           <Input type="number" min="1" value={form.quantity} onChange={(e) => set("quantity", e.target.value)} />
         </Field>
