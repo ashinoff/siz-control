@@ -61,8 +61,10 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setCategoryId("");
-    setSubcategoryId("");
+    // При редактировании — предзаполняем фильтры категорией/подкатегорией самой
+    // позиции, чтобы поля не были пустыми и выбранное наименование не сбрасывалось.
+    setCategoryId(editItem?.catalog_item?.category_id ? String(editItem.catalog_item.category_id) : "");
+    setSubcategoryId(editItem?.catalog_item?.subcategory_id ? String(editItem.catalog_item.subcategory_id) : "");
     api.get("/api/catalog/items").then(({ data }) => setCatalog(data));
     api.get("/api/departments").then(({ data }) => setDepartments(data));
     api.get("/api/warehouses").then(({ data }) => setWarehouses(data));
@@ -145,6 +147,18 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
 
   const selectedCatalog = catalog.find((c) => c.id === Number(form.catalog_item_id));
 
+  // Смена фильтра «Категория/Подкатегория» сбрасывает выбранное наименование
+  // ТОЛЬКО если оно реально не подходит под новый фильтр (иначе — оставляем).
+  const changeCategory = (val) => {
+    setCategoryId(val);
+    setSubcategoryId("");
+    if (selectedCatalog && val && selectedCatalog.category_id !== Number(val)) set("catalog_item_id", "");
+  };
+  const changeSubcategory = (val) => {
+    setSubcategoryId(val);
+    if (selectedCatalog && val && selectedCatalog.subcategory_id !== Number(val)) set("catalog_item_id", "");
+  };
+
   const submit = async () => {
     setError(null);
     setBusy(true);
@@ -217,14 +231,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
       {/* ── Средство измерения: позиция + паспортные характеристики ── */}
       <Section title="Средство измерения (позиция и характеристики)" tone="si">
         <Field label="Категория (фильтр)">
-          <Select
-            value={categoryId}
-            onChange={(e) => {
-              setCategoryId(e.target.value);
-              setSubcategoryId("");
-              set("catalog_item_id", "");
-            }}
-          >
+          <Select value={categoryId} onChange={(e) => changeCategory(e.target.value)}>
             <option value="">Все категории</option>
             {categoryOptions.map(([id, name]) => (
               <option key={id} value={id}>{name}</option>
@@ -235,10 +242,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           <Select
             value={subcategoryId}
             disabled={!categoryId || !subcategoryOptions.length}
-            onChange={(e) => {
-              setSubcategoryId(e.target.value);
-              set("catalog_item_id", "");
-            }}
+            onChange={(e) => changeSubcategory(e.target.value)}
           >
             <option value="">Все подкатегории</option>
             {subcategoryOptions.map(([id, name]) => (
