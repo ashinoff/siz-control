@@ -59,7 +59,8 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [categoryId, setCategoryId] = useState(""); // catalog narrowing filter
-  const [subcategoryId, setSubcategoryId] = useState(""); // подкатегория (доп. фильтр позиции)
+  const [subcategoryId, setSubcategoryId] = useState(""); // подкатегория (сохраняется на позиции)
+  const [allSubcats, setAllSubcats] = useState([]); // все заданные подкатегории (справочник)
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +70,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     setCategoryId(editItem?.catalog_item?.category_id ? String(editItem.catalog_item.category_id) : "");
     setSubcategoryId(editItem?.catalog_item?.subcategory_id ? String(editItem.catalog_item.subcategory_id) : "");
     api.get("/api/catalog/items").then(({ data }) => setCatalog(data));
+    api.get("/api/catalog/subcategories").then(({ data }) => setAllSubcats(data));
     api.get("/api/departments").then(({ data }) => setDepartments(data));
     api.get("/api/warehouses").then(({ data }) => setWarehouses(data));
 
@@ -127,15 +129,15 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
   }, [catalogByType]);
 
-  // Подкатегории, встречающиеся среди позиций выбранной категории (для доп. фильтра).
+  // ВСЕ заданные подкатегории выбранной категории (из справочника) — чтобы можно
+  // было назначить позиции даже ту подкатегорию, которой пока нет ни у одной позиции.
   const subcategoryOptions = useMemo(() => {
     if (!categoryId) return [];
-    const m = new Map();
-    for (const c of catalogByType) {
-      if (c.category_id === Number(categoryId) && c.subcategory?.id) m.set(c.subcategory.id, c.subcategory.name);
-    }
-    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
-  }, [catalogByType, categoryId]);
+    return allSubcats
+      .filter((s) => s.category_id === Number(categoryId))
+      .map((s) => [s.id, s.name])
+      .sort((a, b) => a[1].localeCompare(b[1], "ru"));
+  }, [allSubcats, categoryId]);
 
   const catalogFiltered = useMemo(() => {
     let list = categoryId ? catalogByType.filter((c) => c.category_id === Number(categoryId)) : catalogByType;
@@ -205,6 +207,18 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           department_owner_id: Number(form.department_owner_id),
         });
       }
+
+      // Подкатегория — свойство ПОЗИЦИИ справочника (общее для всех её единиц).
+      // Если пользователь изменил её в карточке В РАМКАХ той же категории позиции —
+      // сохраняем на самой позиции. Сверку по категории делаем, чтобы просмотр/
+      // фильтрация по другой категории случайно НЕ переклассифицировала позицию.
+      if (selectedCatalog && categoryId && Number(categoryId) === selectedCatalog.category_id) {
+        const newSub = subcategoryId ? Number(subcategoryId) : null;
+        if (newSub !== (selectedCatalog.subcategory_id ?? null)) {
+          await api.put(`/api/catalog/items/${selectedCatalog.id}`, { subcategory_id: newSub });
+        }
+      }
+
       onSaved?.();
       onClose?.();
     } catch (e) {
@@ -245,13 +259,13 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             ))}
           </Select>
         </Field>
-        <Field label="Подкатегория (фильтр)">
+        <Field label="Подкатегория позиции" hint="Сохраняется на позиции справочника — для всех её единиц.">
           <Select
             value={subcategoryId}
             disabled={!categoryId || !subcategoryOptions.length}
             onChange={(e) => changeSubcategory(e.target.value)}
           >
-            <option value="">Все подкатегории</option>
+            <option value="">— без подкатегории —</option>
             {subcategoryOptions.map(([id, name]) => (
               <option key={id} value={id}>{name}</option>
             ))}
