@@ -81,7 +81,7 @@ export default function ImportIssued() {
         <h3 style={{ fontSize: 14.5, marginBottom: 12 }}>2. Загрузите заполненный файл</h3>
         <input
           type="file"
-          accept=".xlsx,.xls"
+          accept=".xlsx"
           onChange={(e) => setFile(e.target.files[0] || null)}
           style={{ fontSize: 13, marginBottom: 12 }}
         />

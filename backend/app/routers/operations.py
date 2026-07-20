@@ -38,6 +38,15 @@ from ..services.audit import log_movement
 router = APIRouter(prefix="/api/operations", tags=["operations"])
 
 
+def _not_in_stock_reason(status: str) -> str:
+    """Человекочитаемая причина, почему позицию нельзя выдать/переместить."""
+    return {
+        InventoryStatus.ISSUED.value: "выдана сотруднику",
+        InventoryStatus.TO_WRITEOFF.value: "находится в списании",
+        InventoryStatus.WRITTEN_OFF.value: "списана",
+    }.get(status, f"имеет статус «{status}»")
+
+
 def _default_warehouse_id(db: Session, department_id: int) -> Optional[int]:
     wh = (
         db.query(Warehouse)
@@ -67,10 +76,12 @@ def issue_items(
             raise HTTPException(status_code=404, detail=f"Позиция {entry.inventory_item_id} не найдена")
         # RES users may only issue stock owned by their own department.
         assert_department_access(current, item.department_owner_id)
-        if item.status == InventoryStatus.ISSUED.value:
-            raise HTTPException(status_code=400, detail=f"Позиция {entry.inventory_item_id} уже выдана сотруднику")
-        if item.status == InventoryStatus.WRITTEN_OFF.value:
-            raise HTTPException(status_code=400, detail=f"Позиция {entry.inventory_item_id} списана")
+        # Only in-stock items may be issued; anything else is blocked with a reason.
+        if item.status != InventoryStatus.IN_STOCK.value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Позиция {item.id} {_not_in_stock_reason(item.status)} — выдать можно только позицию со склада",
+            )
         if entry.quantity > item.quantity:
             raise HTTPException(
                 status_code=400,
@@ -78,10 +89,17 @@ def issue_items(
             )
 
         issue_qty = entry.quantity
+        qty_before = item.quantity  # количество ДО операции (для журнала)
 
         if issue_qty < item.quantity:
             # Split: reduce the stock item, create a new issued item.
             item.quantity -= issue_qty
+
+            # Наследуем уже начатый срок эксплуатации (как в ветке полной выдачи),
+            # иначе стартуем от даты выдачи.
+            split_start = payload.issued_date
+            if item.life_starts_in_stock and item.service_start_date:
+                split_start = item.service_start_date
 
             issued_item = InventoryItem(
                 catalog_item_id=item.catalog_item_id,
@@ -95,7 +113,7 @@ def issue_items(
                 status=InventoryStatus.ISSUED.value,
                 date_received=item.date_received,
                 date_issued=payload.issued_date,
-                service_start_date=payload.issued_date,
+                service_start_date=split_start,
                 life_value=item.life_value,
                 life_unit=item.life_unit,
                 life_starts_in_stock=item.life_starts_in_stock,
@@ -136,7 +154,7 @@ def issue_items(
             department_id=target.department_owner_id,
             employee_id=employee.id,
             object_label=target.catalog_item.name if target.catalog_item else None,
-            old_value={"status": InventoryStatus.IN_STOCK.value, "quantity": issue_qty},
+            old_value={"status": InventoryStatus.IN_STOCK.value, "quantity": qty_before},
             new_value={"status": target.status, "employee": employee.full_name,
                        "service_start": str(target.service_start_date)},
             comment=payload.comment,
@@ -231,13 +249,17 @@ def move_item(
     current: User = Depends(require_privileged),
 ):
     item = db.query(InventoryItem).filter(InventoryItem.id == payload.inventory_item_id).first()
-    if not item:
+    if not item or not item.is_active:
         raise HTTPException(status_code=404, detail="Позиция не найдена")
-    if item.status == InventoryStatus.ISSUED.value:
-        raise HTTPException(
-            status_code=400,
-            detail="Нельзя перемещать позицию, выданную сотруднику. Сначала оформите возврат.",
+    # Only in-stock items may be moved. This also closes the hole where a partial
+    # move of a to_writeoff/written_off item spawned a fresh IN_STOCK unit.
+    if item.status != InventoryStatus.IN_STOCK.value:
+        detail = (
+            "Нельзя перемещать позицию, выданную сотруднику. Сначала оформите возврат."
+            if item.status == InventoryStatus.ISSUED.value
+            else f"Позиция {item.id} {_not_in_stock_reason(item.status)} — переместить можно только позицию со склада"
         )
+        raise HTTPException(status_code=400, detail=detail)
 
     warehouse = db.query(Warehouse).filter(Warehouse.id == payload.to_warehouse_id).first()
     if not warehouse or warehouse.department_id != payload.to_department_id:
@@ -311,7 +333,7 @@ def verify_item(
     current: User = Depends(require_privileged),
 ):
     item = db.query(InventoryItem).filter(InventoryItem.id == payload.inventory_item_id).first()
-    if not item:
+    if not item or not item.is_active:
         raise HTTPException(status_code=404, detail="Позиция не найдена")
 
     # Determine the next verification date: explicit, else from catalog period.
@@ -323,7 +345,11 @@ def verify_item(
             item.catalog_item.verification_period_unit,
         )
 
-    item.requires_verification = True
+    # Не навязываем поверку принудительно: включаем requires_verification только
+    # если сама номенклатура требует поверки (иначе оставляем флаг как есть и лишь
+    # фиксируем даты/запись). Это не «включает» поверку тем, кому она не нужна.
+    if item.catalog_item and item.catalog_item.requires_verification:
+        item.requires_verification = True
     item.last_verification_date = payload.verification_date
     item.next_verification_date = next_date
 
@@ -472,6 +498,7 @@ def writeoff_item(
         raise HTTPException(status_code=400, detail="Нельзя списать выданную позицию. Сначала возврат.")
     item.status = InventoryStatus.WRITTEN_OFF.value
     item.current_employee_id = None
+    item.current_warehouse_id = None  # списанная позиция не занимает полку склада
     # Final write-off retires the unit: soft-delete it so it leaves the active
     # registries and moves to the «Удалённое» bin, where it can be purged.
     item.is_active = False

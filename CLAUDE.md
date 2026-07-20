@@ -274,6 +274,27 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     в `allow_origins` (list из env, не `*`). Коммит `d8e1563`.
 
 ## Журнал изменений (Claude Code ведёт сам)
+- **2026-07-20** — Багфиксы по ревью (Fable 5), 8 пунктов. (1) `serve_spa`
+  (main.py) — защита от path traversal: отдаём файл только если
+  `resolved.is_relative_to(FRONTEND_DIR.resolve())`, иначе SPA-fallback. (2)
+  `operations.issue_items` — позитивная проверка: выдавать можно ТОЛЬКО IN_STOCK,
+  иначе 400 с причиной (`_not_in_stock_reason`). (3) `move_item` — 404 если
+  `not is_active`, 400 если `status != IN_STOCK` (закрыта дыра: частичное
+  перемещение to_writeoff/written_off плодило IN_STOCK). (4) сплит-выдача
+  наследует начатый `service_start_date` (life_starts_in_stock). (5)
+  `import_issued` — строки без ФИО, но с подразделением → создаются IN_STOCK
+  (employee=None, склад = первый активный подразделения; ошибка только если нет
+  НИ ФИО, НИ подразделения; owner_dept из строки/сотрудника). (6) импорт: только
+  .xlsx (убран .xls в бэке и во фронте `ImportIssued.jsx`, сообщение уточнено).
+  (7) для строк С сотрудником — создаётся `Assignment`; для всех строк —
+  `recalc_service_dates` и авто-`next_verification_date` из
+  `date_test + metrology_interval_months`. (8) verify — 404 если `not is_active`,
+  requires_verification не навязывается (True только если каталог требует);
+  writeoff — обнуляет `current_warehouse_id`; issue log old_value — количество ДО
+  операции; auth login — при `user.role is None` токен с role="" + warning;
+  старт main.py — warning про дефолтные SECRET_KEY/ADMIN_PASSWORD на не-SQLite.
+  Проверено сценариями: выдача/перемещение to_writeoff→400, move written_off→404,
+  импорт без ФИО→in_stock, .xls→400, issued-импорт→assignment+next_verif.
 - **2026-07-20** — Форма «Редактирование позиции», блок «Размещение»: для ВЫДАННЫХ
   предметов (status=issued / есть `current_employee_id`) селект «Склад/участок» больше
   не показывается — вместо него read-only «Находится у сотрудника: …» + подсказка, что

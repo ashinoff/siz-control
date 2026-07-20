@@ -25,8 +25,10 @@ from ..dependencies import require_admin
 from ..enums import InventoryStatus, OperationType
 from ..models.catalog import CatalogItem
 from ..models.inventory import InventoryItem
+from ..models.journal import Assignment
 from ..models.organization import Department, Employee, Warehouse
 from ..models.user import User
+from ..services import status as status_service
 from ..services.audit import log_movement
 
 router = APIRouter(prefix="/api/import-issued", tags=["import"])
@@ -132,8 +134,11 @@ def upload_issued_register(
     db: Session = Depends(get_db),
     current: User = Depends(require_admin),
 ):
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(status_code=400, detail="Допустимы только файлы .xlsx")
+    if not file.filename.lower().endswith(".xlsx"):
+        raise HTTPException(
+            status_code=400,
+            detail="Допустим только .xlsx. Файл .xls пересохраните в Excel как .xlsx",
+        )
 
     try:
         wb = load_workbook(io.BytesIO(file.file.read()), data_only=True)
@@ -205,10 +210,8 @@ def upload_issued_register(
 
         row_errors = []
 
-        # Validate FIO
-        if not fio:
-            row_errors.append("ФИО не указано")
-        emp_matches = emp_by_name.get(fio.lower(), [])
+        # ФИО может быть пустым — тогда позиция создаётся НА СКЛАД (без сотрудника).
+        emp_matches = emp_by_name.get(fio.lower(), []) if fio else []
         if fio and not emp_matches:
             row_errors.append(f"Сотрудник «{fio}» не найден в базе")
 
@@ -226,6 +229,10 @@ def upload_issued_register(
         elif emp_matches and not dept:
             employee = emp_matches[0]
 
+        # Ошибка только если нет НИ ФИО, НИ подразделения — позицию некуда отнести.
+        if not fio and not dept_name:
+            row_errors.append("Не указаны ни ФИО, ни подразделение")
+
         # Validate nomenclature
         if not item_name:
             row_errors.append("Наименование не указано")
@@ -236,16 +243,30 @@ def upload_issued_register(
         if item_name and not catalog_item:
             row_errors.append(f"Номенклатура «{item_name}» не найдена в справочнике")
 
+        # Подразделение-владелец: из строки, иначе из сотрудника (для NOT NULL FK).
+        owner_dept_id = dept.id if dept else (employee.department_id if employee else None)
+        if owner_dept_id is None and not row_errors:
+            row_errors.append("Не удалось определить подразделение позиции")
+
         if row_errors:
             errors.append({"row": i, "fio": fio, "item": item_name, "errors": row_errors})
             continue
 
-        # Duplicate check: same catalog + inv_number/serial + employee
+        is_issued = employee is not None
+
+        # Duplicate check: same catalog + inv/serial, matched by employee (выдано)
+        # или по подразделению для складских строк.
         dup_q = db.query(InventoryItem).filter(
             InventoryItem.catalog_item_id == catalog_item.id,
-            InventoryItem.current_employee_id == employee.id,
             InventoryItem.is_active.is_(True),
         )
+        if is_issued:
+            dup_q = dup_q.filter(InventoryItem.current_employee_id == employee.id)
+        else:
+            dup_q = dup_q.filter(
+                InventoryItem.department_owner_id == owner_dept_id,
+                InventoryItem.current_employee_id.is_(None),
+            )
         if inv_number:
             dup_q = dup_q.filter(InventoryItem.inventory_number == inv_number)
         if serial_number:
@@ -255,10 +276,10 @@ def upload_issued_register(
                 skipped += 1
                 continue
 
-        # Find warehouse for the department
+        # Первый активный склад подразделения-владельца (для складских строк).
         wh = db.query(Warehouse).filter(
-            Warehouse.department_id == dept.id, Warehouse.is_active.is_(True)
-        ).first()
+            Warehouse.department_id == owner_dept_id, Warehouse.is_active.is_(True)
+        ).order_by(Warehouse.id).first()
 
         inv = InventoryItem(
             catalog_item_id=catalog_item.id,
@@ -267,13 +288,7 @@ def upload_issued_register(
             serial_number=serial_number or None,
             brand_model=brand_model or None,
             quantity=quantity,
-            department_owner_id=dept.id,
-            current_warehouse_id=None,
-            current_employee_id=employee.id,
-            status=InventoryStatus.ISSUED.value,
-            date_issued=date_issued,
-            date_received=date_issued,
-            service_start_date=date_issued,
+            department_owner_id=owner_dept_id,
             manufacture_year=manufacture_year,
             accuracy_class=accuracy_class or None,
             measurement_range=measurement_range or None,
@@ -287,18 +302,55 @@ def upload_issued_register(
             requires_verification=catalog_item.requires_verification,
             comment=comment or None,
         )
+
+        if is_issued:
+            inv.status = InventoryStatus.ISSUED.value
+            inv.current_employee_id = employee.id
+            inv.current_warehouse_id = None
+            inv.date_issued = date_issued
+            inv.date_received = date_issued
+            inv.service_start_date = date_issued
+        else:
+            # Строка без сотрудника → позиция НА СКЛАД.
+            inv.status = InventoryStatus.IN_STOCK.value
+            inv.current_employee_id = None
+            inv.current_warehouse_id = wh.id if wh else None
+            inv.date_received = date_issued  # дата из колонки как дата поступления
+            # date_issued/service_start не заполняем — кроме life_starts_in_stock.
+            if inv.life_starts_in_stock and inv.date_received:
+                inv.service_start_date = inv.date_received
+
+        # Если след. поверка не задана, но есть дата поверки и период КМХ —
+        # вычисляем её как «дата поверки + периодичность (мес.)».
+        if inv.next_verification_date is None and date_test and metrology_interval_months:
+            inv.next_verification_date = status_service.add_period(
+                date_test, metrology_interval_months, "months"
+            )
+
         db.add(inv)
         db.flush()
+
+        # Пересчёт срока службы из фактического старта эксплуатации.
+        status_service.recalc_service_dates(inv)
+
+        if is_issued:
+            db.add(Assignment(
+                inventory_item_id=inv.id,
+                employee_id=employee.id,
+                issued_date=date_issued or date.today(),
+                issued_by_user_id=current.id,
+                issue_comment="Импорт реестра выданного",
+            ))
 
         log_movement(
             db,
             user_id=current.id,
-            operation_type=OperationType.ISSUE.value,
+            operation_type=OperationType.ISSUE.value if is_issued else OperationType.CREATE.value,
             inventory_item_id=inv.id,
-            department_id=dept.id,
-            employee_id=employee.id,
+            department_id=owner_dept_id,
+            employee_id=employee.id if is_issued else None,
             object_label=catalog_item.name,
-            comment="Импорт реестра выданного",
+            comment="Импорт реестра выданного" if is_issued else "Импорт реестра (на склад)",
         )
         created += 1
 

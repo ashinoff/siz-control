@@ -182,6 +182,20 @@ def on_startup() -> None:
     finally:
         db.close()
 
+    # Security posture check: warn (do NOT fail) if running on a real database
+    # with the shipped default secrets still in place.
+    if not settings.is_sqlite:
+        if settings.SECRET_KEY == "CHANGE_ME_IN_PRODUCTION_use_a_long_random_string":
+            logger.warning(
+                "SECURITY: SECRET_KEY is still the default value — set a strong "
+                "SECRET_KEY in the environment for production."
+            )
+        if settings.ADMIN_PASSWORD == "admin123":
+            logger.warning(
+                "SECURITY: ADMIN_PASSWORD is still the default 'admin123' — "
+                "change it in the environment for production."
+            )
+
 
 @app.get("/api/health", tags=["health"])
 def health() -> dict:
@@ -220,11 +234,17 @@ if FRONTEND_DIR.is_dir():
 
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):
-        """Serve index.html for any non-API route (SPA client-side routing)."""
-        file = FRONTEND_DIR / full_path
-        if file.is_file():
-            return FileResponse(str(file))
-        return FileResponse(str(FRONTEND_DIR / "index.html"))
+        """Serve index.html for any non-API route (SPA client-side routing).
+
+        Guards against path traversal: a real file is served only when the
+        resolved path stays inside the dist/ directory; otherwise we fall back
+        to index.html (never leak files outside the build).
+        """
+        root = FRONTEND_DIR.resolve()
+        resolved = (root / full_path).resolve()
+        if resolved.is_file() and resolved.is_relative_to(root):
+            return FileResponse(str(resolved))
+        return FileResponse(str(root / "index.html"))
 else:
     @app.get("/", tags=["health"])
     def root() -> dict:

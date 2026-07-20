@@ -1,4 +1,6 @@
 """Authentication endpoints."""
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -9,6 +11,8 @@ from ..models.user import User
 from ..schemas.user import PasswordChange, Token, UserOut
 from ..security import create_access_token, hash_password, verify_password
 from ..services.audit import log_audit
+
+logger = logging.getLogger("siz_control")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -30,7 +34,12 @@ def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Учетная запись заблокирована",
         )
-    token = create_access_token(subject=user.id, extra={"role": user.role.code})
+    # A user without a role must still be able to log in (issue an empty-role
+    # token rather than 500 on user.role.code).
+    if user.role is None:
+        logger.warning("User id=%s has no role; issuing token with empty role.", user.id)
+    role_code = user.role.code if user.role else ""
+    token = create_access_token(subject=user.id, extra={"role": role_code})
     log_audit(
         db,
         user_id=user.id,
