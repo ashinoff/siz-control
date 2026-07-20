@@ -164,6 +164,16 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     setCategoryId(val);
     setSubcategoryId("");
   };
+  // Выбор наименования (позиции) АВТОМАТИЧЕСКИ подтягивает её категорию и
+  // подкатегорию из справочника — они всегда отражают текущую позицию.
+  const changeCatalogItem = (val) => {
+    set("catalog_item_id", val);
+    const ci = catalog.find((c) => c.id === Number(val));
+    if (ci) {
+      setCategoryId(ci.category_id ? String(ci.category_id) : "");
+      setSubcategoryId(ci.subcategory_id ? String(ci.subcategory_id) : "");
+    }
+  };
   const changeSubcategory = (val) => {
     setSubcategoryId(val);
   };
@@ -272,7 +282,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           </Select>
         </Field>
         <Field label="Наименование (позиция справочника)" required>
-          <Select value={form.catalog_item_id} onChange={(e) => set("catalog_item_id", e.target.value)}>
+          <Select value={form.catalog_item_id} onChange={(e) => changeCatalogItem(e.target.value)}>
             <option value="">— выберите —</option>
             {catalogFiltered.map((c) => (
               <option key={c.id} value={c.id}>
