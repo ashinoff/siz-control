@@ -137,8 +137,14 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
   const catalogFiltered = useMemo(() => {
     let list = categoryId ? catalogByType.filter((c) => c.category_id === Number(categoryId)) : catalogByType;
     if (subcategoryId) list = list.filter((c) => c.subcategory_id === Number(subcategoryId));
+    // Выбранное наименование ВСЕГДА остаётся в списке, даже если не подходит под
+    // фильтр — чтобы выбор не «слетал» и оставался видимым в выпадающем списке.
+    if (form.catalog_item_id) {
+      const sel = catalogByType.find((c) => c.id === Number(form.catalog_item_id));
+      if (sel && !list.some((c) => c.id === sel.id)) list = [sel, ...list];
+    }
     return list;
-  }, [catalogByType, categoryId, subcategoryId]);
+  }, [catalogByType, categoryId, subcategoryId, form.catalog_item_id]);
 
   const whFiltered = useMemo(() => {
     if (!form.department_owner_id) return warehouses;
@@ -147,16 +153,14 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
 
   const selectedCatalog = catalog.find((c) => c.id === Number(form.catalog_item_id));
 
-  // Смена фильтра «Категория/Подкатегория» сбрасывает выбранное наименование
-  // ТОЛЬКО если оно реально не подходит под новый фильтр (иначе — оставляем).
+  // Фильтры «Категория/Подкатегория» только сужают выпадающий список — выбранное
+  // наименование НИКОГДА не сбрасывают (оно остаётся благодаря catalogFiltered).
   const changeCategory = (val) => {
     setCategoryId(val);
     setSubcategoryId("");
-    if (selectedCatalog && val && selectedCatalog.category_id !== Number(val)) set("catalog_item_id", "");
   };
   const changeSubcategory = (val) => {
     setSubcategoryId(val);
-    if (selectedCatalog && val && selectedCatalog.subcategory_id !== Number(val)) set("catalog_item_id", "");
   };
 
   const submit = async () => {
@@ -259,9 +263,6 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
               </option>
             ))}
           </Select>
-        </Field>
-        <Field label="Марка / тип (тип СИ)">
-          <Input value={form.brand_model} onChange={(e) => set("brand_model", e.target.value)} placeholder="Тип / модель прибора" />
         </Field>
         <Field label="Инвентарный номер">
           <Input value={form.inventory_number} onChange={(e) => set("inventory_number", e.target.value)} />
