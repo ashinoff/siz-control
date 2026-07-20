@@ -37,8 +37,32 @@ TEMPLATE_COLUMNS = [
     "Срок службы (число)",
     "Ед. срока (days/months/years)",
     "Требует поверки (да/нет)",
+    # Метрология (для средств измерений — СИ; для СИЗ/материалов можно пусто)
+    "Год выпуска",
+    "Класс точности",
+    "Предел (диапазон) измерений",
+    "Вид КМХ (поверка/калибровка/контроль исправности)",
+    "Периодичность КМХ (мес.)",
+    "№ свидетельства о поверке",
     "Комментарий",
 ]
+
+
+def _row_str(row, idx):
+    """Строковое значение ячейки по индексу (или None, если пусто/нет колонки)."""
+    if len(row) > idx and row[idx] is not None:
+        return str(row[idx]).strip() or None
+    return None
+
+
+def _row_int(row, idx):
+    """Целое значение ячейки по индексу (или None, если пусто/невалидно)."""
+    if len(row) > idx and row[idx] not in (None, ""):
+        try:
+            return int(row[idx])
+        except (ValueError, TypeError):
+            return None
+    return None
 
 
 @router.get("/template")
@@ -57,10 +81,15 @@ def download_template(_: User = Depends(require_admin)):
         cell.font = header_font
         ws.column_dimensions[get_column_letter(col)].width = max(len(name) + 2, 15)
 
-    # Example row
-    example = ["ppe", "Перчатки", "Перчатки диэлектрические", "ИНВ-001", "СН-12345",
-               2, 1, 1, "2025-01-15", 12, "months", "нет", "Пример"]
-    ws.append(example)
+    # Примеры: СИЗ (метрология пустая) и СИ — средство измерения (метрология заполнена)
+    example_ppe = ["ppe", "Перчатки", "Перчатки диэлектрические", "ИНВ-001", "СН-12345",
+                   2, 1, 1, "2025-01-15", 12, "months", "нет",
+                   "", "", "", "", "", "", "Пример СИЗ"]
+    example_si = ["equipment", "Приборы", "Амперметр Э59", "ИНВ-050", "СН-777",
+                  1, 1, 1, "2020-03-10", "", "", "да",
+                  2018, "0,5", "0-600А", "поверка", 12, "№ 1234-2025", "Пример СИ"]
+    ws.append(example_ppe)
+    ws.append(example_si)
 
     ws.freeze_panes = "A2"
     buf = io.BytesIO()
@@ -172,7 +201,15 @@ def upload_import(
         req_verif_raw = str(row[11] or "").strip().lower() if len(row) > 11 else "нет"
         requires_verification = req_verif_raw in ("да", "yes", "true", "1")
 
-        comment = str(row[12] or "").strip() or None if len(row) > 12 else None
+        # Метрология (СИ)
+        manufacture_year = _row_int(row, 12)
+        accuracy_class = _row_str(row, 13)
+        measurement_range = _row_str(row, 14)
+        metrology_type = _row_str(row, 15)
+        metrology_interval_months = _row_int(row, 16)
+        verification_certificate = _row_str(row, 17)
+
+        comment = _row_str(row, 18)
 
         if dept_id is None:
             errors.append(f"Строка {i}: не указано подразделение")
@@ -259,7 +296,13 @@ def upload_import(
             date_received=date_received,
             life_value=life_value,
             life_unit=life_unit,
+            manufacture_year=manufacture_year,
+            accuracy_class=accuracy_class,
+            measurement_range=measurement_range,
+            metrology_type=metrology_type,
+            metrology_interval_months=metrology_interval_months,
             requires_verification=requires_verification,
+            verification_certificate=verification_certificate,
             comment=comment,
         )
         if inv.life_starts_in_stock and date_received:
