@@ -46,10 +46,18 @@ class InventoryItem(Base, TimestampMixin, SoftDeleteMixin):
     # If True, the clock runs even while the item sits in the warehouse.
     life_starts_in_stock = Column(Boolean, default=False, nullable=False)
 
+    # Метрология (средства измерений — СИ): паспортные характеристики прибора
+    manufacture_year = Column(Integer, nullable=True)           # год выпуска
+    accuracy_class = Column(String(50), nullable=True)          # класс точности (погрешность)
+    measurement_range = Column(String(255), nullable=True)      # предел (диапазон) измерений
+    metrology_type = Column(String(50), nullable=True)          # вид КМХ: поверка/калибровка/контроль исправности
+    metrology_interval_months = Column(Integer, nullable=True)  # периодичность КМХ, мес.
+
     # Verification
     requires_verification = Column(Boolean, default=False, nullable=False)
     last_verification_date = Column(Date, nullable=True)
     next_verification_date = Column(Date, nullable=True)
+    verification_certificate = Column(String(120), nullable=True)  # № свидетельства о поверке
 
     # Inspection (осмотр — отдельно от поверки)
     next_inspection_date = Column(Date, nullable=True)

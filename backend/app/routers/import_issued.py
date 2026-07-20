@@ -38,10 +38,16 @@ TEMPLATE_COLUMNS = [
     "Марка / тип",
     "Инв. номер",
     "Серийный номер",
+    "Год выпуска",
+    "Класс точности",
+    "Предел (диапазон) измерений",
+    "Вид КМХ (поверка/калибровка/контроль исправности)",
+    "Периодичность КМХ (мес.)",
     "Кол-во",
     "Дата выдачи (ГГГГ-ММ-ДД)",
     "Дата испытания (ГГГГ-ММ-ДД)",
     "Дата след. испытания (ГГГГ-ММ-ДД)",
+    "№ свидетельства о поверке",
     "Результат осмотра (годен/негоден/ремонт)",
     "Сведения о ремонтах",
     "Примечание",
@@ -66,14 +72,20 @@ def download_issued_template(_: User = Depends(require_admin)):
     example = [
         "Иванов Иван Иванович",
         "Адлерский РЭС",
-        "Перчатки диэлектрические штанцованные",
-        "ГОСТ 12345",
-        "СИЗ-100",
+        "Амперметр Э59",
+        "Э59",
+        "СИ-100",
         "SN-001",
+        2018,
+        "0,5",
+        "0-600А",
+        "поверка",
+        12,
         1,
         "2025-06-01",
         "2025-05-15",
         "2025-11-15",
+        "№ 1234-2025",
         "годен",
         "",
         "",
@@ -157,23 +169,39 @@ def upload_issued_register(
         if not any(row[:3]):
             continue
 
-        fio = str(row[0] or "").strip()
-        dept_name = str(row[1] or "").strip()
-        item_name = str(row[2] or "").strip()
-        brand_model = str(row[3] or "").strip() if len(row) > 3 else ""
-        inv_number = str(row[4] or "").strip() if len(row) > 4 else ""
-        serial_number = str(row[5] or "").strip() if len(row) > 5 else ""
-        try:
-            quantity = int(row[6]) if len(row) > 6 and row[6] else 1
-        except (ValueError, TypeError):
-            quantity = 1
-        date_issued = _parse_date(row[7]) if len(row) > 7 else None
-        date_test = _parse_date(row[8]) if len(row) > 8 else None
-        date_next_test = _parse_date(row[9]) if len(row) > 9 else None
-        inspection_raw = str(row[10] or "").strip().lower() if len(row) > 10 else ""
+        def cell(idx):
+            return row[idx] if len(row) > idx else None
+
+        def cell_str(idx):
+            return str(cell(idx) or "").strip()
+
+        def cell_int(idx):
+            v = cell(idx)
+            try:
+                return int(v) if v not in (None, "") else None
+            except (ValueError, TypeError):
+                return None
+
+        fio = cell_str(0)
+        dept_name = cell_str(1)
+        item_name = cell_str(2)
+        brand_model = cell_str(3)
+        inv_number = cell_str(4)
+        serial_number = cell_str(5)
+        manufacture_year = cell_int(6)
+        accuracy_class = cell_str(7)
+        measurement_range = cell_str(8)
+        metrology_type = cell_str(9)
+        metrology_interval_months = cell_int(10)
+        quantity = cell_int(11) or 1
+        date_issued = _parse_date(cell(12))
+        date_test = _parse_date(cell(13))
+        date_next_test = _parse_date(cell(14))
+        verification_certificate = cell_str(15)
+        inspection_raw = cell_str(16).lower()
         inspection_result = INSPECTION_MAP.get(inspection_raw)
-        repair_info = str(row[11] or "").strip() if len(row) > 11 else ""
-        comment = str(row[12] or "").strip() if len(row) > 12 else ""
+        repair_info = cell_str(17)
+        comment = cell_str(18)
 
         row_errors = []
 
@@ -246,8 +274,14 @@ def upload_issued_register(
             date_issued=date_issued,
             date_received=date_issued,
             service_start_date=date_issued,
+            manufacture_year=manufacture_year,
+            accuracy_class=accuracy_class or None,
+            measurement_range=measurement_range or None,
+            metrology_type=metrology_type or None,
+            metrology_interval_months=metrology_interval_months,
             last_verification_date=date_test,
             next_verification_date=date_next_test,
+            verification_certificate=verification_certificate or None,
             last_inspection_result=inspection_result,
             repair_info=repair_info or None,
             requires_verification=catalog_item.requires_verification,

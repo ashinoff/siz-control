@@ -76,6 +76,11 @@ export default function InventoryDetail({ itemId, open, onClose }) {
               <dt>Серийный №</dt>
               <dd>{item.serial_number || "—"}</dd>
               {item.brand_model && <><dt>Марка / тип</dt><dd>{item.brand_model}</dd></>}
+              {item.manufacture_year && <><dt>Год выпуска</dt><dd>{item.manufacture_year}</dd></>}
+              {item.accuracy_class && <><dt>Класс точности</dt><dd>{item.accuracy_class}</dd></>}
+              {item.measurement_range && <><dt>Предел (диапазон) измерений</dt><dd>{item.measurement_range}</dd></>}
+              {item.metrology_type && <><dt>Вид КМХ</dt><dd>{item.metrology_type}</dd></>}
+              {item.metrology_interval_months != null && <><dt>Периодичность КМХ</dt><dd>{item.metrology_interval_months} мес.</dd></>}
               <dt>Количество</dt>
               <dd>{item.quantity}</dd>
               <dt>Категория</dt>
@@ -105,6 +110,7 @@ export default function InventoryDetail({ itemId, open, onClose }) {
               <dd>{fmtDate(item.last_verification_date)}</dd>
               <dt>Следующая поверка</dt>
               <dd>{fmtDate(item.next_verification_date)}</dd>
+              {item.verification_certificate && <><dt>№ свидетельства о поверке</dt><dd>{item.verification_certificate}</dd></>}
               {item.next_inspection_date && <><dt>Следующий осмотр</dt><dd>{fmtDate(item.next_inspection_date)}</dd></>}
               {item.last_inspection_result && <><dt>Результат осмотра</dt><dd>{{good:"Годен",failed:"Негоден",repair:"Требует ремонта"}[item.last_inspection_result] || item.last_inspection_result}</dd></>}
               {item.repair_info && <><dt>Сведения о ремонтах</dt><dd>{item.repair_info}</dd></>}

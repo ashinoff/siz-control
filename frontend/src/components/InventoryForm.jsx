@@ -1,7 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Modal, Field, Input, Textarea, Select, Alert } from "./ui.jsx";
-import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS } from "../lib/format.js";
+import {
+  ITEM_TYPE_LABEL,
+  LIFE_UNIT_OPTIONS,
+  ACCURACY_CLASS_OPTIONS,
+  MEASUREMENT_RANGE_OPTIONS,
+  METROLOGY_TYPE_OPTIONS,
+} from "../lib/format.js";
+
+// Цветная секция формы — визуально разделяет поля по смыслу
+// (нежные тона: si — СИ, place — размещение, verify — поверка).
+function Section({ title, tone, children }) {
+  return (
+    <div className={`form-section tone-${tone}`}>
+      <div className="form-section-title">{title}</div>
+      <div className="form-grid">{children}</div>
+    </div>
+  );
+}
 
 const empty = {
   catalog_item_id: "",
@@ -15,9 +32,15 @@ const empty = {
   life_value: "",
   life_unit: "",
   life_starts_in_stock: false,
+  manufacture_year: "",
+  accuracy_class: "",
+  measurement_range: "",
+  metrology_type: "",
+  metrology_interval_months: "",
   requires_verification: null,
   last_verification_date: "",
   next_verification_date: "",
+  verification_certificate: "",
   next_inspection_date: "",
   last_inspection_result: "",
   repair_info: "",
@@ -64,6 +87,12 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
         next_inspection_date: editItem.next_inspection_date || "",
         last_inspection_result: editItem.last_inspection_result || "",
         repair_info: editItem.repair_info || "",
+        manufacture_year: editItem.manufacture_year ?? "",
+        accuracy_class: editItem.accuracy_class || "",
+        measurement_range: editItem.measurement_range || "",
+        metrology_type: editItem.metrology_type || "",
+        metrology_interval_months: editItem.metrology_interval_months ?? "",
+        verification_certificate: editItem.verification_certificate || "",
       });
     } else {
       setForm(empty);
@@ -131,9 +160,16 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
         life_value: form.life_value === "" ? null : Number(form.life_value),
         life_unit: form.life_unit || null,
         life_starts_in_stock: !!form.life_starts_in_stock,
+        manufacture_year: form.manufacture_year === "" ? null : Number(form.manufacture_year),
+        accuracy_class: form.accuracy_class || null,
+        measurement_range: form.measurement_range || null,
+        metrology_type: form.metrology_type || null,
+        metrology_interval_months:
+          form.metrology_interval_months === "" ? null : Number(form.metrology_interval_months),
         requires_verification: form.requires_verification,
         last_verification_date: form.last_verification_date || null,
         next_verification_date: form.next_verification_date || null,
+        verification_certificate: form.verification_certificate || null,
         next_inspection_date: form.next_inspection_date || null,
         last_inspection_result: form.last_inspection_result || null,
         repair_info: form.repair_info || null,
@@ -178,7 +214,8 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
     >
       {error && <Alert kind="error">{error}</Alert>}
 
-      <div className="form-grid">
+      {/* ── Средство измерения: позиция + паспортные характеристики ── */}
+      <Section title="Средство измерения (позиция и характеристики)" tone="si">
         <Field label="Категория (фильтр)">
           <Select
             value={categoryId}
@@ -190,9 +227,7 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           >
             <option value="">Все категории</option>
             {categoryOptions.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
+              <option key={id} value={id}>{name}</option>
             ))}
           </Select>
         </Field>
@@ -207,17 +242,12 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           >
             <option value="">Все подкатегории</option>
             {subcategoryOptions.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
+              <option key={id} value={id}>{name}</option>
             ))}
           </Select>
         </Field>
-        <Field label="Позиция справочника" required>
-          <Select
-            value={form.catalog_item_id}
-            onChange={(e) => set("catalog_item_id", e.target.value)}
-          >
+        <Field label="Наименование (позиция справочника)" required>
+          <Select value={form.catalog_item_id} onChange={(e) => set("catalog_item_id", e.target.value)}>
             <option value="">— выберите —</option>
             {catalogFiltered.map((c) => (
               <option key={c.id} value={c.id}>
@@ -226,65 +256,39 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             ))}
           </Select>
         </Field>
-
-        {!isEdit ? (
-          <Field label="Подразделение-владелец" required>
-            <Select
-              value={form.department_owner_id}
-              onChange={(e) => {
-                set("department_owner_id", e.target.value);
-                set("current_warehouse_id", "");
-              }}
-            >
-              <option value="">— выберите —</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        ) : (
-          <Field label="Подразделение-владелец">
-            <Input value={editItem.department_owner?.name || ""} disabled />
-          </Field>
-        )}
-
-        <Field label="Склад">
-          <Select
-            value={form.current_warehouse_id}
-            onChange={(e) => set("current_warehouse_id", e.target.value)}
-          >
-            <option value="">— не на складе —</option>
-            {whFiltered.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </Select>
+        <Field label="Марка / тип (тип СИ)">
+          <Input value={form.brand_model} onChange={(e) => set("brand_model", e.target.value)} placeholder="Тип / модель прибора" />
         </Field>
-
-        <Field label="Кол-во">
-          <Input
-            type="number"
-            min="1"
-            value={form.quantity}
-            onChange={(e) => set("quantity", e.target.value)}
-          />
-        </Field>
-
         <Field label="Инвентарный номер">
           <Input value={form.inventory_number} onChange={(e) => set("inventory_number", e.target.value)} />
         </Field>
-        <Field label="Серийный номер">
+        <Field label="Серийный (заводской) №">
           <Input value={form.serial_number} onChange={(e) => set("serial_number", e.target.value)} />
         </Field>
-        <Field label="Марка / тип">
-          <Input value={form.brand_model} onChange={(e) => set("brand_model", e.target.value)} placeholder="Модель или тип СИЗ" />
+        <Field label="Год выпуска">
+          <Input type="number" min="1900" max="2100" value={form.manufacture_year} onChange={(e) => set("manufacture_year", e.target.value)} placeholder="напр. 2018" />
         </Field>
-
-        <Field label="Дата поступления">
-          <Input type="date" value={form.date_received} onChange={(e) => set("date_received", e.target.value)} />
+        <Field label="Класс точности (погрешность)">
+          <Input list="acc-class-list" value={form.accuracy_class} onChange={(e) => set("accuracy_class", e.target.value)} placeholder="выбрать или ввести" />
+          <datalist id="acc-class-list">
+            {ACCURACY_CLASS_OPTIONS.map((o) => (<option key={o} value={o} />))}
+          </datalist>
+        </Field>
+        <Field label="Предел (диапазон) измерений">
+          <Input list="range-list" value={form.measurement_range} onChange={(e) => set("measurement_range", e.target.value)} placeholder="выбрать или ввести" />
+          <datalist id="range-list">
+            {MEASUREMENT_RANGE_OPTIONS.map((o) => (<option key={o} value={o} />))}
+          </datalist>
+        </Field>
+        <Field label="Вид КМХ (поверка / калибровка / контроль)">
+          <Select value={form.metrology_type} onChange={(e) => set("metrology_type", e.target.value)}>
+            {METROLOGY_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Периодичность КМХ, мес.">
+          <Input type="number" min="0" value={form.metrology_interval_months} onChange={(e) => set("metrology_interval_months", e.target.value)} />
         </Field>
         <div className="field">
           <label>Срок службы (переопределение)</label>
@@ -300,42 +304,65 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
             <Select value={form.life_unit} onChange={(e) => set("life_unit", e.target.value)} style={{ width: 130 }}>
               <option value="">ед.</option>
               {LIFE_UNIT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </Select>
           </div>
           <div className="hint">Если пусто — берётся срок из справочника.</div>
         </div>
-
         <div className="checkbox-row full">
-          <input
-            type="checkbox"
-            id="lsis"
-            checked={!!form.life_starts_in_stock}
-            onChange={(e) => set("life_starts_in_stock", e.target.checked)}
-          />
+          <input type="checkbox" id="lsis" checked={!!form.life_starts_in_stock} onChange={(e) => set("life_starts_in_stock", e.target.checked)} />
           <label htmlFor="lsis">
             Срок эксплуатации идёт уже на складе (по умолчанию срок стартует при выдаче сотруднику)
           </label>
         </div>
+      </Section>
 
+      {/* ── Размещение (место эксплуатации) ── */}
+      <Section title="Размещение (место эксплуатации)" tone="place">
+        {!isEdit ? (
+          <Field label="Подразделение-владелец" required>
+            <Select
+              value={form.department_owner_id}
+              onChange={(e) => {
+                set("department_owner_id", e.target.value);
+                set("current_warehouse_id", "");
+              }}
+            >
+              <option value="">— выберите —</option>
+              {departments.map((d) => (<option key={d.id} value={d.id}>{d.name}</option>))}
+            </Select>
+          </Field>
+        ) : (
+          <Field label="Подразделение-владелец">
+            <Input value={editItem.department_owner?.name || ""} disabled />
+          </Field>
+        )}
+        <Field label="Склад / участок">
+          <Select value={form.current_warehouse_id} onChange={(e) => set("current_warehouse_id", e.target.value)}>
+            <option value="">— не на складе —</option>
+            {whFiltered.map((w) => (<option key={w.id} value={w.id}>{w.name}</option>))}
+          </Select>
+        </Field>
+        <Field label="Кол-во">
+          <Input type="number" min="1" value={form.quantity} onChange={(e) => set("quantity", e.target.value)} />
+        </Field>
+        <Field label="Дата поступления">
+          <Input type="date" value={form.date_received} onChange={(e) => set("date_received", e.target.value)} />
+        </Field>
+      </Section>
+
+      {/* ── Поверка и осмотр ── */}
+      <Section title="Поверка и осмотр" tone="verify">
         <Field label="Дата последней поверки">
-          <Input
-            type="date"
-            value={form.last_verification_date}
-            onChange={(e) => set("last_verification_date", e.target.value)}
-          />
+          <Input type="date" value={form.last_verification_date} onChange={(e) => set("last_verification_date", e.target.value)} />
         </Field>
         <Field label="Дата следующей поверки">
-          <Input
-            type="date"
-            value={form.next_verification_date}
-            onChange={(e) => set("next_verification_date", e.target.value)}
-          />
+          <Input type="date" value={form.next_verification_date} onChange={(e) => set("next_verification_date", e.target.value)} />
         </Field>
-
+        <Field label="Отметка о поверке (№ свидетельства)">
+          <Input value={form.verification_certificate} onChange={(e) => set("verification_certificate", e.target.value)} placeholder="напр. № 1234-2025" />
+        </Field>
         <Field label="Дата следующего осмотра">
           <Input type="date" value={form.next_inspection_date} onChange={(e) => set("next_inspection_date", e.target.value)} />
         </Field>
@@ -351,11 +378,15 @@ export default function InventoryForm({ open, onClose, onSaved, editItem, defaul
           <label>Сведения о ремонтах</label>
           <Textarea value={form.repair_info} onChange={(e) => set("repair_info", e.target.value)} placeholder="Информация о ремонтах, дефектах, восстановлении" />
         </div>
+      </Section>
+
+      {/* ── Прочее ── */}
+      <Section title="Прочее" tone="neutral">
         <div className="field full">
           <label>Комментарий</label>
           <Textarea value={form.comment} onChange={(e) => set("comment", e.target.value)} />
         </div>
-      </div>
+      </Section>
     </Modal>
   );
 }

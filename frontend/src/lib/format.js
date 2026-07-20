@@ -69,6 +69,20 @@ export const MEASURE_UNIT_OPTIONS = [
   { value: "комплект", label: "комплект" },
 ];
 
+// ── Метрология (средства измерений — СИ) ──────────────────────────────────
+// Класс точности / диапазон — datalist (можно выбрать или ввести своё значение).
+export const ACCURACY_CLASS_OPTIONS = ["0,5S", "0,5", "0,2", "0,1", "3", "0,1 кПа", "0,2ºС"];
+export const MEASUREMENT_RANGE_OPTIONS = [
+  "1 мА", "0,1 А", "100 мА", "0-600А", "0-1000А", "0-3000А",
+  "10…100; 100…1000А", "80-406 кПа", "0,2с", "0,1с",
+];
+export const METROLOGY_TYPE_OPTIONS = [
+  { value: "", label: "— не задано —" },
+  { value: "поверка", label: "Поверка" },
+  { value: "калибровка", label: "Калибровка" },
+  { value: "контроль исправности", label: "Контроль исправности" },
+];
+
 // Gender (пол) for catalog items — optional, mostly for clothing/footwear.
 export const GENDER_OPTIONS = [
   { value: "", label: "— не задан —" },

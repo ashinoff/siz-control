@@ -800,6 +800,40 @@ table.data-bordered tbody td {
 .form-grid .full {
   grid-column: 1 / -1;
 }
+
+/* Цветные секции формы — визуально группируют поля (нежные тона). */
+.form-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px 4px;
+  margin-bottom: 14px;
+}
+.form-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.form-section-title::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.6;
+}
+.tone-si { background: #f3fbf5; border-color: #d6efdd; }
+.tone-si .form-section-title { color: #15803d; }
+.tone-place { background: #f2f8ff; border-color: #d7e8fb; }
+.tone-place .form-section-title { color: #1d4ed8; }
+.tone-verify { background: #fff8f0; border-color: #fbe6c8; }
+.tone-verify .form-section-title { color: #b45309; }
+.tone-neutral { background: var(--surface-2); }
+.tone-neutral .form-section-title { color: var(--text-muted); }
 .checkbox-row {
   display: flex;
   align-items: center;

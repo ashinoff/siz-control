@@ -22,9 +22,16 @@ class InventoryItemBase(BaseModel):
     life_value: Optional[int] = None
     life_unit: Optional[LifeUnit] = None
     life_starts_in_stock: bool = False
+    # Метрология (СИ)
+    manufacture_year: Optional[int] = None
+    accuracy_class: Optional[str] = None
+    measurement_range: Optional[str] = None
+    metrology_type: Optional[str] = None
+    metrology_interval_months: Optional[int] = None
     requires_verification: Optional[bool] = None
     last_verification_date: Optional[date] = None
     next_verification_date: Optional[date] = None
+    verification_certificate: Optional[str] = None
     next_inspection_date: Optional[date] = None
     last_inspection_result: Optional[str] = None
     repair_info: Optional[str] = None
@@ -48,9 +55,15 @@ class InventoryItemUpdate(BaseModel):
     life_value: Optional[int] = None
     life_unit: Optional[LifeUnit] = None
     life_starts_in_stock: Optional[bool] = None
+    manufacture_year: Optional[int] = None
+    accuracy_class: Optional[str] = None
+    measurement_range: Optional[str] = None
+    metrology_type: Optional[str] = None
+    metrology_interval_months: Optional[int] = None
     requires_verification: Optional[bool] = None
     last_verification_date: Optional[date] = None
     next_verification_date: Optional[date] = None
+    verification_certificate: Optional[str] = None
     next_inspection_date: Optional[date] = None
     last_inspection_result: Optional[str] = None
     repair_info: Optional[str] = None
@@ -83,9 +96,16 @@ class InventoryItemOut(ORMModel):
     life_unit: Optional[str] = None
     life_starts_in_stock: bool
 
+    manufacture_year: Optional[int] = None
+    accuracy_class: Optional[str] = None
+    measurement_range: Optional[str] = None
+    metrology_type: Optional[str] = None
+    metrology_interval_months: Optional[int] = None
+
     requires_verification: bool
     last_verification_date: Optional[date] = None
     next_verification_date: Optional[date] = None
+    verification_certificate: Optional[str] = None
 
     next_inspection_date: Optional[date] = None
     last_inspection_result: Optional[str] = None

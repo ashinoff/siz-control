@@ -274,6 +274,23 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     в `allow_origins` (list из env, не `*`). Коммит `d8e1563`.
 
 ## Журнал изменений (Claude Code ведёт сам)
+- **2026-07-20** — Метрология СИ: новые поля по всей цепочке. В `InventoryItem`
+  (model) добавлены `manufacture_year`, `accuracy_class`, `measurement_range`,
+  `metrology_type` (вид КМХ), `metrology_interval_months`, `verification_certificate`
+  (№ свидетельства о поверке) — nullable, `schema_sync` сам добавит колонки на
+  Amvera. Проброшены в `InventoryItemBase/Update/Out` (роутер работает через
+  model_dump/setattr — авто). Импорт выданного: в `TEMPLATE_COLUMNS` добавлены
+  «Год выпуска», «Класс точности», «Предел (диапазон) измерений», «Вид КМХ»,
+  «Периодичность КМХ (мес.)», «№ свидетельства о поверке»; парсинг переиндексирован
+  (хелперы `cell/cell_str/cell_int`), новые поля пишутся в `InventoryItem`. Фронт:
+  `InventoryForm` переструктурирована в **цветные секции** (нежные тона: `tone-si`
+  зелёный — СИ/характеристики, `tone-place` голубой — размещение, `tone-verify`
+  оранжевый — поверка/осмотр, `tone-neutral` — прочее; компонент `Section`, стили
+  `.form-section*` в index.css); класс точности и диапазон — через `<datalist>`
+  (можно выбрать из списка или ввести своё), вид КМХ — select. `InventoryDetail`
+  показывает новые поля (условно, чтобы не засорять карточки СИЗ). Опции —
+  `ACCURACY_CLASS_OPTIONS/MEASUREMENT_RANGE_OPTIONS/METROLOGY_TYPE_OPTIONS` в
+  `format.js`. Проверено end-to-end: create/update, шаблон, импорт по новому шаблону.
 - **2026-07-20** — В форме «Редактирование позиции» (`InventoryForm`, правка/создание
   карточки учёта из «Наличие») рядом с фильтром «Категория» добавлен фильтр
   **«Подкатегория»** для сужения списка «Позиция справочника». Состояние
