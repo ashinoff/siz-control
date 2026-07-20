@@ -274,6 +274,13 @@ render.yaml          старый конфиг Render (legacy, НЕ исполь
     в `allow_origins` (list из env, не `*`). Коммит `d8e1563`.
 
 ## Журнал изменений (Claude Code ведёт сам)
+- **2026-07-20** — Кэш-заголовки статики (main.py) — фикс «после деплоя видна
+  старая версия» (index.html кэшировался). `serve_spa`: index.html и SPA-fallback
+  отдаются с `Cache-Control: no-cache, no-store, must-revalidate` (`_NO_STORE`);
+  прочие файлы dist (favicon/svg) — `no-cache` (`_NO_CACHE`). `/assets/*` (Vite,
+  контент-хэш в имени) — через подкласс `_CachedStaticFiles` с
+  `public, max-age=31536000, immutable`. Корень «/» покрыт (serve_spa("") →
+  index.html no-store). API-роуты и middleware `frame_ancestors` не тронуты.
 - **2026-07-20** — Багфиксы по ревью (Fable 5), 8 пунктов. (1) `serve_spa`
   (main.py) — защита от path traversal: отдаём файл только если
   `resolved.is_relative_to(FRONTEND_DIR.resolve())`, иначе SPA-fallback. (2)

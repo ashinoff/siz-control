@@ -229,8 +229,25 @@ app.include_router(platform.router)
 # Serve frontend static build -----------------------------------------------
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 
+# index.html / SPA fallback must never be cached, so a new deploy is picked up
+# immediately (the stale-index-after-deploy bug). Other loose dist files
+# (favicon, svg) revalidate. Hashed /assets are safe to cache forever.
+_NO_STORE = "no-cache, no-store, must-revalidate"
+_NO_CACHE = "no-cache"
+_IMMUTABLE = "public, max-age=31536000, immutable"
+
+
+class _CachedStaticFiles(StaticFiles):
+    """StaticFiles that marks Vite's content-hashed assets as immutable."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = _IMMUTABLE
+        return response
+
+
 if FRONTEND_DIR.is_dir():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+    app.mount("/assets", _CachedStaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
 
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):
@@ -239,12 +256,16 @@ if FRONTEND_DIR.is_dir():
         Guards against path traversal: a real file is served only when the
         resolved path stays inside the dist/ directory; otherwise we fall back
         to index.html (never leak files outside the build).
+
+        Caching: index.html (and the SPA fallback) is sent no-store so browsers
+        always revalidate after a redeploy; other loose files revalidate too.
         """
         root = FRONTEND_DIR.resolve()
         resolved = (root / full_path).resolve()
         if resolved.is_file() and resolved.is_relative_to(root):
-            return FileResponse(str(resolved))
-        return FileResponse(str(root / "index.html"))
+            cache = _NO_STORE if resolved.name == "index.html" else _NO_CACHE
+            return FileResponse(str(resolved), headers={"Cache-Control": cache})
+        return FileResponse(str(root / "index.html"), headers={"Cache-Control": _NO_STORE})
 else:
     @app.get("/", tags=["health"])
     def root() -> dict:
