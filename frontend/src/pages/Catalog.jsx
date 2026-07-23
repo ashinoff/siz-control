@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api, { apiError } from "../api/client.js";
 import { Badge, Spinner, EmptyState, Modal, Field, Input, Textarea, Select, Alert, ConfirmDialog } from "../components/ui.jsx";
 import { ITEM_TYPE_LABEL, LIFE_UNIT_OPTIONS, MEASURE_UNIT_OPTIONS, GENDER_OPTIONS, fmtLife } from "../lib/format.js";
-import { IconPlus, IconEdit, IconTrash, IconBook } from "../components/icons.jsx";
+import { IconPlus, IconEdit, IconTrash, IconBook, IconDownload } from "../components/icons.jsx";
 import PageHeading from "../components/PageHeading.jsx";
+import exportExcel from "../lib/exportExcel.js";
 
 const TYPE_TABS = [
   { key: "ppe", label: "СИЗ" },
@@ -317,6 +318,40 @@ function Nomenclature({ type }) {
     }
   };
 
+  // Выгрузка всего справочника номенклатуры в Excel — по ВСЕМ трём типам
+  // (СИЗ / оборудование / материалы), с категорией и подкатегорией.
+  const [exporting, setExporting] = useState(false);
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const responses = await Promise.all(
+        TYPE_TABS.map((t) =>
+          api.get("/api/catalog/items", { params: { item_type: t.key } }).then(({ data }) => data),
+        ),
+      );
+      const all = responses.flat();
+      const rows = all.map((it) => ({
+        "Тип": ITEM_TYPE_LABEL[it.item_type] || it.item_type,
+        "Категория": it.category?.name || "",
+        "Подкатегория": it.subcategory?.name || "",
+        "Наименование": it.name,
+        "Описание": it.description || "",
+        "Ед. изм.": it.unit || "",
+        "Пол": it.gender || "",
+        "Срок службы": fmtLife(it.life_value, it.life_unit) || "",
+        "Требуется поверка": it.requires_verification ? "Да" : "Нет",
+        "Период поверки": it.requires_verification
+          ? fmtLife(it.verification_period_value, it.verification_period_unit) || ""
+          : "",
+      }));
+      await exportExcel(rows, "Справочник номенклатуры", "Справочник_номенклатуры");
+    } catch (e) {
+      alert(apiError(e));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex-between" style={{ marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
@@ -354,9 +389,14 @@ function Nomenclature({ type }) {
             </button>
           )}
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setModal({ item_type: type })}>
-          <IconPlus size={16} /> Позиция справочника
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-secondary btn-sm" onClick={doExport} disabled={exporting} title="Выгрузить весь справочник (СИЗ, оборудование, материалы) в Excel">
+            <IconDownload size={16} /> {exporting ? "Выгрузка…" : "Excel"}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => setModal({ item_type: type })}>
+            <IconPlus size={16} /> Позиция справочника
+          </button>
+        </div>
       </div>
 
       <div className="card">
